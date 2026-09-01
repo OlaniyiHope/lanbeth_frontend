@@ -1,0 +1,42 @@
+.staff-page{max-width:1600px;margin:auto}
+
+.staff-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.staff-search{background:#fff;border:1px solid var(--line);height:42px;border-radius:9px;display:flex;align-items:center;gap:8px;padding:0 12px;flex:1;min-width:230px;color:#7c8a82}
+.staff-search input{border:0;outline:0;width:100%;background:transparent}
+
+.staff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:17px}
+
+.staff-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 5px 24px rgba(17,55,38,.03);transition:.25s;animation:rise .45s both}
+.staff-card:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+
+.staff-card-top{display:flex;align-items:center;gap:10px;margin-bottom:17px}
+.staff-card-top>.staff-name{flex:1;min-width:0}
+
+.staff-initial{background:var(--green-soft);color:var(--green);display:grid;place-items:center;font-weight:800;border-radius:12px;width:42px;height:42px}
+
+.staff-name b,.staff-name small{display:block}
+.staff-name small{color:var(--muted);font-size:10px;margin-top:4px}
+
+.staff-info{margin:8px 0}
+.staff-info p{display:flex;gap:6px;color:var(--muted);font-size:12px;margin:8px 0}
+.staff-info p span{color:#96a69c}
+
+.staff-actions{display:flex;gap:7px;margin-top:16px}
+.staff-actions .danger-btn{margin-left:auto}
+
+.empty-staff{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-staff h3{font:800 18px Manrope;color:var(--ink);margin:14px 0 6px}
+.empty-staff p{font-size:13px}
+.empty-icon{width:56px;height:56px;border-radius:50%;background:var(--green-soft);display:grid;place-items:center;margin:0 auto;font-size:24px}
+
+.staff-detail{padding:4px}
+.staff-detail-hero{display:flex;align-items:center;gap:14px;background:var(--green-pale);border-radius:13px;padding:15px;margin-bottom:20px}
+.staff-detail-hero>div{flex:1}
+.staff-detail-hero h2{margin:0 0 4px;font:800 20px Manrope}
+.staff-detail-hero p{margin:0 0 8px;color:var(--muted);font-size:12px}
+
+.staff-detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+
+@media(max-width:1200px){.staff-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:800px){.staff-grid{grid-template-columns:1fr}}
+@media(max-width:520px){.staff-toolbar{display:grid;grid-template-columns:1fr}.staff-toolbar .primary{width:100%}.staff-detail-grid{grid-template-columns:1fr}}

@@ -28,7 +28,7 @@ function Gate() {
         <Route path="/signup" element={<AuthPage mode="signup" />} />
         <Route
           path="/"
-          element={<Landing onLogin={() => nav('/login')} onSignup={() => nav('/signup')} />}
+          element={<AuthPage onLogin={() => nav('/login')} onSignup={() => nav('/signup')} />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

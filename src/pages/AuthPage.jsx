@@ -111,22 +111,10 @@ const submit = async (e) => {
         <div className="auth-form">
           <Brand />
           <span className="eyebrow">{signup ? 'NEW ACCOUNT' : 'ADMIN ACCESS'}</span>
-          <h1>{signup ? 'Create your account' : 'Sign in to your account'}</h1>
-          <p>{signup ? 'Fill in your details to create a new portal account.' : 'Enter your email and password to sign in.'}</p>
+        
 
           <form onSubmit={submit}>
-            {signup && (
-              <>
-                <label>
-                  Full Name
-                  <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Enter your full name" />
-                </label>
-                <label>
-                  Username
-                  <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Choose a username" />
-                </label>
-              </>
-            )}
+          
             <label>
               Email or Username
               <input value={email} onChange={(e) => setEmail(e.target.value)} type="text" placeholder="you@example.com" required />
@@ -141,12 +129,6 @@ const submit = async (e) => {
             </button>
           </form>
 
-          <div className="auth-switch">
-            {signup ? 'Already have an account?' : 'Don’t have an account?'}{' '}
-            <button onClick={() => nav(signup ? '/login' : '/signup')}>
-              {signup ? 'Sign in' : 'Create one'}
-            </button>
-          </div>
         </div>
       </div>
     </div>

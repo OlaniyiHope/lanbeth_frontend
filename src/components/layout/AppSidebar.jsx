@@ -59,10 +59,16 @@ export default function AppSidebar({ collapsed, mobileOpen, toggle, closeMobile,
 
   return (
     <aside className={'sidebar ' + (mobileOpen ? 'open' : '')}>
-      <div className="side-top">
-        <Brand />
-        <button className="icon-btn" onClick={toggle}><Menu /></button>
-      </div>
+   <div className="side-top">
+  <Brand />
+  <button
+    className="icon-btn"
+    onClick={mobileOpen ? closeMobile : toggle}
+    aria-label={mobileOpen ? 'Close menu' : 'Collapse sidebar'}
+  >
+    <Menu />
+  </button>
+</div>
       <div className="side-profile">
         <span className="side-profile-icon"><ShieldCheck size={15} /></span>
         <div><b>{user?.fullName || 'Portal User'}</b><small>{role} workspace</small></div>
@@ -75,6 +81,7 @@ export default function AppSidebar({ collapsed, mobileOpen, toggle, closeMobile,
             className={'side-item ' + (loc.pathname === p ? 'active' : '')}
             to={p}
             onClick={closeMobile}
+            style={{color: "black", textDecoration: "none"}}
           >
             <I /><span>{t}</span>
           </Link>

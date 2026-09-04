@@ -24,7 +24,12 @@
     const handleLogout = () => { logout(); nav('/'); };
 
     return (
-      <div className={'app ' + (collapsed ? 'collapsed ' : '') + (mobileOpen ? 'mobile-open ' : '') + `theme-${theme}`}>
+      <div className={
+  'app ' +
+  (collapsed && !mobileOpen ? 'collapsed ' : '') +
+  (mobileOpen ? 'mobile-open ' : '') +
+  `theme-${theme}`
+} >
         {mobileOpen && <button className="sidebar-overlay" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
         <AppSidebar
           collapsed={collapsed}

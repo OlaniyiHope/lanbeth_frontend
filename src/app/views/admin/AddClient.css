@@ -364,3 +364,111 @@
     grid-column: auto;
   }
 }
+/* ============================================
+   FORCE VISIBLE BORDERS — overrides any global
+   reset (input{border:none} etc.) loaded after
+   this file
+   ============================================ */
+.add-client-page .field input,
+.add-client-page .field select,
+.add-client-page .field textarea {
+  border: 1.5px solid var(--ac-border) !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  font-size: 14px !important;
+  color: var(--ac-ink) !important;
+  background: #ffffff !important;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  appearance: auto;
+  -webkit-appearance: auto;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.add-client-page .field textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+.add-client-page .field input:focus,
+.add-client-page .field select:focus,
+.add-client-page .field textarea:focus {
+  outline: none !important;
+  border-color: var(--ac-primary) !important;
+  box-shadow: 0 0 0 3px var(--ac-primary-light) !important;
+}
+
+/* Required-field asterisk */
+.add-client-page .field em {
+  color: var(--ac-danger);
+  font-style: normal;
+  margin-left: 3px;
+}
+
+/* Upload dropzone — force visible dashed border + solid bg */
+.add-client-page .upload-drop {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  border: 2px dashed var(--ac-border) !important;
+  border-radius: 12px !important;
+  padding: 18px !important;
+  background: var(--ac-bg) !important;
+  color: var(--ac-muted) !important;
+  cursor: pointer;
+  font-size: 13.5px;
+}
+.add-client-page .upload-drop:hover {
+  border-color: var(--ac-primary) !important;
+  background: var(--ac-primary-light) !important;
+}
+.add-client-page .upload-drop b {
+  color: var(--ac-primary-dark);
+}
+.add-client-page .upload-drop svg {
+  color: var(--ac-primary);
+}
+.add-client-page .upload-drop input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Save / Cancel buttons — force bg + text so nothing collapses to white-on-white */
+.add-client-page .form-actions .primary {
+  background: var(--ac-primary) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--ac-primary) !important;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.add-client-page .form-actions .primary:hover {
+  background: var(--ac-primary-dark) !important;
+}
+.add-client-page .form-actions .primary:disabled {
+  background: #86c9a0 !important;
+  border-color: #86c9a0 !important;
+  cursor: not-allowed;
+}
+
+.add-client-page .form-actions .outline {
+  background: #ffffff !important;
+  color: var(--ac-ink) !important;
+  border: 1px solid var(--ac-border) !important;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.add-client-page .form-actions .outline:hover {
+  background: var(--ac-bg) !important;
+}

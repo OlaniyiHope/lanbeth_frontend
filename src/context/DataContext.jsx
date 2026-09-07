@@ -54,6 +54,7 @@ async function apiRequest(endpoint, token, options = {}) {
 }
 
 
+
 function extractArray(result, keys = []) {
   if (Array.isArray(result)) {
     return result;
@@ -259,6 +260,23 @@ export function DataProvider({ children }) {
       ),
     }));
   };
+const createClient = async (payload) => {
+  const token = getToken();
+
+  const response = await apiRequest("/clients", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  const created = response?.client || response?.data || response;
+
+  setDataState((previous) => ({
+    ...previous,
+    clients: [...previous.clients, created],
+  }));
+
+  return created;
+};
 
 
   // ==============================
@@ -284,7 +302,7 @@ export function DataProvider({ children }) {
         error,
 
         refreshData: loadLiveData,
-
+ createClient,
         getClient,
         updateClient,
         deleteClient,

@@ -26,6 +26,48 @@ const WEEKDAYS = [
   "Sunday",
 ];
 
+const RELIGIONS = [
+  "No religion",
+  "Christian",
+  "Buddhist",
+  "Hindu",
+  "Jewish",
+  "Muslim",
+  "Sikh",
+  "Other religion",
+  "Prefer not to say",
+];
+
+const ETHNICITIES = [
+  "White British",
+  "White Irish",
+  "White - Other",
+  "Mixed / Multiple ethnic groups",
+  "Asian / Asian British - Indian",
+  "Asian / Asian British - Pakistani",
+  "Asian / Asian British - Bangladeshi",
+  "Asian / Asian British - Chinese",
+  "Asian / Asian British - Other",
+  "Black / African / Caribbean / Black British",
+  "Other ethnic group",
+  "Prefer not to say",
+];
+
+const UK_REGIONS = [
+  "North East England",
+  "North West England",
+  "Yorkshire and the Humber",
+  "East Midlands",
+  "West Midlands",
+  "East of England",
+  "Greater London",
+  "South East England",
+  "South West England",
+  "Wales",
+  "Scotland",
+  "Northern Ireland",
+];
+
 const emptyClient = {
   name: "",
   email: "",
@@ -48,7 +90,6 @@ const emptyClient = {
   allergies: "",
   favouriteActivities: "",
   dailyCare: { bedtime: "", bathTime: "" },
-  meal: { type: "", description: "", time: "", day: "Monday" },
 };
 
 function makeId() {
@@ -65,18 +106,15 @@ function getInitials(name = "") {
     .toUpperCase();
 }
 
-function generateClientId(count) {
-  const year = new Date().getFullYear();
-  return `CL-${String(count + 1).padStart(3, "0")}-${year}`;
-}
-
 function AddClient() {
   const nav = useNavigate();
-  const { data, setData } = useData();
+  const { createClient } = useData();
   const [values, setValues] = useState(emptyClient);
   const [documents, setDocuments] = useState([]);
   const [medications, setMedications] = useState([]);
+  const [meals, setMeals] = useState([]);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const update = (field, value) => {
     setValues((v) => ({ ...v, [field]: value }));
@@ -86,6 +124,7 @@ function AddClient() {
     setValues((v) => ({ ...v, [section]: { ...v[section], [field]: value } }));
   };
 
+  // ---------- Documents ----------
   const handleFiles = (fileList) => {
     const files = Array.from(fileList || []);
     if (!files.length) return;
@@ -105,6 +144,7 @@ function AddClient() {
     });
   };
 
+  // ---------- Medications ----------
   const addMedication = () => {
     setMedications((meds) => [
       ...meds,
@@ -122,7 +162,23 @@ function AddClient() {
     setMedications((meds) => meds.filter((m) => m.id !== id));
   };
 
-  const submit = (e) => {
+  // ---------- Meals (multi-entry: add one per Breakfast, Lunch, Dinner...) ----------
+  const addMeal = () => {
+    setMeals((m) => [
+      ...m,
+      { id: makeId(), type: "", description: "", time: "", day: "Monday" },
+    ]);
+  };
+
+  const updateMeal = (id, field, value) => {
+    setMeals((m) => m.map((meal) => (meal.id === id ? { ...meal, [field]: value } : meal)));
+  };
+
+  const removeMeal = (id) => {
+    setMeals((m) => m.filter((meal) => meal.id !== id));
+  };
+
+  const submit = async (e) => {
     e.preventDefault();
     if (!values.name.trim() || !values.email.trim() || !values.phone.trim()) {
       setError("Full name, email address, and phone number are required.");
@@ -134,22 +190,52 @@ function AddClient() {
     }
     setError("");
 
-    const newClient = {
-      ...values,
-      id: generateClientId(data.clients.length),
-      initials: getInitials(values.name),
-      status: "Active",
-      startDate: new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-      }),
-      documents,
-      medications: medications.filter((m) => m.name.trim()),
+    const payload = {
+      fullName: values.name,
+      email: values.email,
+      phone: values.phone,
+      keySafeCode: values.keySafeCode,
+      dateOfBirth: values.dateOfBirth || undefined,
+      address: values.address,
+      postCode: values.postCode,
+      region: values.region,
+      maritalStatus: values.maritalStatus,
+      religion: values.religion,
+      ethnicity: values.ethnicity || undefined,
+      gender: values.sex === "Other" ? undefined : values.sex,
+      communicationPreference: values.communicationPreference,
+      medicalHistory: values.medicalHistory,
+      allergies: values.allergies,
+      favoriteActivities: values.favouriteActivities,
+      dailyCare: values.dailyCare,
+      emergencyContact: {
+        familyMemberName: values.familyMemberName,
+        relationship: values.relationship,
+        nextOfKinName: values.nextOfKinName,
+        nextOfKinPhone: values.nextOfKinPhone,
+      },
+      foodIntake: meals
+        .filter((m) => m.type)
+        .map(({ id, type, description, time, day }) => ({
+          mealType: type,
+          mealDescription: description,
+          mealTime: time,
+          mealDay: day,
+        })),
+      medications: medications
+        .filter((m) => m.name.trim())
+        .map(({ id, ...rest }) => rest),
     };
 
-    setData({ ...data, clients: [...data.clients, newClient] });
-    nav("/admin/clients");
+    try {
+      setSubmitting(true);
+      const created = await createClient(payload);
+      nav(`/admin/client-profile/${created.clientId}`);
+    } catch (err) {
+      setError(err.message || "Failed to create client.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -191,7 +277,7 @@ function AddClient() {
               <input
                 value={values.phone}
                 onChange={(e) => update("phone", e.target.value)}
-                placeholder="+1 (555) 123-4567"
+                placeholder="+44 7700 900123"
               />
             </Field>
             <Field label="Key Safe Code">
@@ -201,14 +287,14 @@ function AddClient() {
                 placeholder="e.g. 4821"
               />
             </Field>
-            <Field label="Date of Birth">
+            <Field label="Date of Birth" required>
               <input
                 type="date"
                 value={values.dateOfBirth}
                 onChange={(e) => update("dateOfBirth", e.target.value)}
               />
             </Field>
-            <Field label="Sex">
+            <Field label="Sex" required>
               <select value={values.sex} onChange={(e) => update("sex", e.target.value)}>
                 <option value="">Select...</option>
                 <option value="Female">Female</option>
@@ -216,26 +302,27 @@ function AddClient() {
                 <option value="Other">Other</option>
               </select>
             </Field>
-            <Field label="Address" wide>
+            <Field label="Address" wide required>
               <input
                 value={values.address}
                 onChange={(e) => update("address", e.target.value)}
-                placeholder="123 Oak Street, Springfield"
+                placeholder="123 Oak Street, London"
               />
             </Field>
-            <Field label="Post Code">
+            <Field label="Post Code" required>
               <input
                 value={values.postCode}
                 onChange={(e) => update("postCode", e.target.value)}
-                placeholder="IL 62701"
+                placeholder="e.g. SW9 0AB"
               />
             </Field>
-            <Field label="Region">
-              <input
-                value={values.region}
-                onChange={(e) => update("region", e.target.value)}
-                placeholder="e.g. Lambeth"
-              />
+            <Field label="Region" required>
+              <select value={values.region} onChange={(e) => update("region", e.target.value)}>
+                <option value="">Select...</option>
+                {UK_REGIONS.map((r) => (
+                  <option key={r}>{r}</option>
+                ))}
+              </select>
             </Field>
             <Field label="Marital Status">
               <select
@@ -249,17 +336,21 @@ function AddClient() {
                 <option>Divorced</option>
               </select>
             </Field>
-            <Field label="Religion">
-              <input
-                value={values.religion}
-                onChange={(e) => update("religion", e.target.value)}
-              />
+            <Field label="Religion" required>
+              <select value={values.religion} onChange={(e) => update("religion", e.target.value)}>
+                <option value="">Select...</option>
+                {RELIGIONS.map((r) => (
+                  <option key={r}>{r}</option>
+                ))}
+              </select>
             </Field>
-            <Field label="Ethnicity">
-              <input
-                value={values.ethnicity}
-                onChange={(e) => update("ethnicity", e.target.value)}
-              />
+            <Field label="Ethnicity" hint="Optional">
+              <select value={values.ethnicity} onChange={(e) => update("ethnicity", e.target.value)}>
+                <option value="">Select... (optional)</option>
+                {ETHNICITIES.map((e2) => (
+                  <option key={e2}>{e2}</option>
+                ))}
+              </select>
             </Field>
             <Field label="Communication Preference" wide>
               <input
@@ -300,7 +391,7 @@ function AddClient() {
               <input
                 value={values.nextOfKinPhone}
                 onChange={(e) => update("nextOfKinPhone", e.target.value)}
-                placeholder="+1 (555) 987-6543"
+                placeholder="+44 7700 987654"
               />
             </Field>
           </div>
@@ -354,45 +445,63 @@ function AddClient() {
           </div>
 
           <div className="form-subhead">Current Food Intake Plan</div>
-          <div className="form-grid">
-            <Field label="Meal Type">
-              <select
-                value={values.meal.type}
-                onChange={(e) => updateNested("meal", "type", e.target.value)}
-              >
-                <option value="">Select...</option>
-                {MEAL_TYPES.map((m) => (
-                  <option key={m}>{m}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Meal Description">
-              <input
-                value={values.meal.description}
-                onChange={(e) => updateNested("meal", "description", e.target.value)}
-                placeholder="e.g. Soft diet, low sodium"
-              />
-            </Field>
-            <Field label="Meal Time">
-              <input
-                type="time"
-                value={values.meal.time}
-                onChange={(e) => updateNested("meal", "time", e.target.value)}
-              />
-            </Field>
-            <Field label="Select Meal Day">
-              <select
-                value={values.meal.day}
-                onChange={(e) => updateNested("meal", "day", e.target.value)}
-              >
-                {WEEKDAYS.map((d) => (
-                  <option key={d}>{d}</option>
-                ))}
-              </select>
-            </Field>
-          </div>
 
-          <div className="form-subhead">Favourite Activities</div>
+          {meals.length === 0 && (
+            <p className="section-empty">No meals added yet. Add one entry per meal (breakfast, lunch, etc).</p>
+          )}
+
+          {meals.map((meal) => (
+            <div className="medication-row" key={meal.id}>
+              <div className="form-grid">
+                <Field label="Meal Type">
+                  <select
+                    value={meal.type}
+                    onChange={(e) => updateMeal(meal.id, "type", e.target.value)}
+                  >
+                    <option value="">Select...</option>
+                    {MEAL_TYPES.map((m) => (
+                      <option key={m}>{m}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Meal Description">
+                  <input
+                    value={meal.description}
+                    onChange={(e) => updateMeal(meal.id, "description", e.target.value)}
+                    placeholder="e.g. Soft diet, low sodium"
+                  />
+                </Field>
+                <Field label="Meal Time">
+                  <input
+                    type="time"
+                    value={meal.time}
+                    onChange={(e) => updateMeal(meal.id, "time", e.target.value)}
+                  />
+                </Field>
+                <Field label="Day">
+                  <select
+                    value={meal.day}
+                    onChange={(e) => updateMeal(meal.id, "day", e.target.value)}
+                  >
+                    {WEEKDAYS.map((d) => (
+                      <option key={d}>{d}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <button type="button" className="medication-remove" onClick={() => removeMeal(meal.id)}>
+                <Trash2 size={13} />
+                Remove
+              </button>
+            </div>
+          ))}
+
+          <button type="button" className="outline small" onClick={addMeal}>
+            <Plus size={14} />
+            Add Meal Entry
+          </button>
+
+          <div className="form-subhead" style={{ marginTop: 24 }}>Favourite Activities</div>
           <div className="form-grid">
             <Field label="Activities" wide>
               <input
@@ -414,11 +523,7 @@ function AddClient() {
             <span>
               <b>Click to browse</b> or drag a file in
             </span>
-            <input
-              type="file"
-              multiple
-              onChange={(e) => handleFiles(e.target.files)}
-            />
+            <input type="file" multiple onChange={(e) => handleFiles(e.target.files)} />
           </label>
 
           {documents.length > 0 && (
@@ -449,9 +554,7 @@ function AddClient() {
           title="Medication Schedule"
           desc="Optional — add any medications this client currently takes. All fields are required per entry."
         >
-          {medications.length === 0 && (
-            <p className="section-empty">No medications added yet.</p>
-          )}
+          {medications.length === 0 && <p className="section-empty">No medications added yet.</p>}
 
           {medications.map((med) => (
             <div className="medication-row" key={med.id}>
@@ -487,18 +590,12 @@ function AddClient() {
                 <Field label="Instructions" wide>
                   <input
                     value={med.instructions}
-                    onChange={(e) =>
-                      updateMedication(med.id, "instructions", e.target.value)
-                    }
+                    onChange={(e) => updateMedication(med.id, "instructions", e.target.value)}
                     placeholder="e.g. Take with food, twice daily"
                   />
                 </Field>
               </div>
-              <button
-                type="button"
-                className="medication-remove"
-                onClick={() => removeMedication(med.id)}
-              >
+              <button type="button" className="medication-remove" onClick={() => removeMedication(med.id)}>
                 <Trash2 size={13} />
                 Remove
               </button>
@@ -514,12 +611,12 @@ function AddClient() {
         {error && <div className="form-error">{error}</div>}
 
         <div className="form-actions">
-          <button type="button" className="outline" onClick={() => nav(-1)}>
+          <button type="button" className="outline" onClick={() => nav(-1)} disabled={submitting}>
             Cancel
           </button>
-          <button type="submit" className="primary">
+          <button type="submit" className="primary" disabled={submitting}>
             <Plus size={15} />
-            Add Client
+            {submitting ? "Saving..." : "Add Client"}
           </button>
         </div>
       </form>

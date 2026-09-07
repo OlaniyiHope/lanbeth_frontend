@@ -101,71 +101,127 @@ export function DataProvider({ children }) {
   // LOAD CLIENTS + STAFF
   // ==============================
 
-  const loadLiveData = async () => {
+  // const loadLiveData = async () => {
 
-    if (!user) {
-      return;
-    }
+  //   if (!user) {
+  //     return;
+  //   }
 
-    const token = getToken();
+  //   const token = getToken();
 
-    if (!token) {
-      setError("Authentication token is missing.");
-      return;
-    }
+  //   if (!token) {
+  //     setError("Authentication token is missing.");
+  //     return;
+  //   }
 
-    setLoading(true);
-    setError("");
+  //   setLoading(true);
+  //   setError("");
 
-    try {
+  //   try {
 
-      const [
-        clientsResponse,
-        staffResponse,
-      ] = await Promise.all([
-        apiRequest("/clients", token),
-        apiRequest("/staff", token),
-      ]);
-
-
-      const clients = extractArray(
-        clientsResponse,
-        ["clients", "results"]
-      );
+  //     const [
+  //       clientsResponse,
+  //       staffResponse,
+  //     ] = await Promise.all([
+  //       apiRequest("/clients", token),
+  //       apiRequest("/staff", token),
+  //     ]);
 
 
-      const staff = extractArray(
+  //     const clients = extractArray(
+  //       clientsResponse,
+  //       ["clients", "results"]
+  //     );
+
+
+  //     const staff = extractArray(
+  //       staffResponse,
+  //       ["staff", "staffList", "results"]
+  //     );
+
+
+  //     setDataState((previous) => ({
+  //       ...previous,
+  //       clients,
+  //       staff,
+  //     }));
+
+
+  //   } catch (err) {
+
+  //     console.error(
+  //       "Failed to load dashboard data:",
+  //       err
+  //     );
+
+  //     setError(
+  //       err.message ||
+  //       "Unable to load dashboard data."
+  //     );
+
+  //   } finally {
+
+  //     setLoading(false);
+
+  //   }
+  // };
+const loadLiveData = async () => {
+  if (!user) {
+    return;
+  }
+
+  const token = getToken();
+
+  if (!token) {
+    setError("Authentication token is missing.");
+    return;
+  }
+
+  setLoading(true);
+  setError("");
+
+  try {
+    // Everyone who is authorized can load their clients
+    const clientsResponse = await apiRequest("/clients", token);
+
+    const clients = extractArray(
+      clientsResponse,
+      ["clients", "results"]
+    );
+
+    let staff = [];
+
+    // Only admins should load the staff directory
+    if (user.role === "admin") {
+      const staffResponse = await apiRequest("/staff", token);
+
+      staff = extractArray(
         staffResponse,
         ["staff", "staffList", "results"]
       );
-
-
-      setDataState((previous) => ({
-        ...previous,
-        clients,
-        staff,
-      }));
-
-
-    } catch (err) {
-
-      console.error(
-        "Failed to load dashboard data:",
-        err
-      );
-
-      setError(
-        err.message ||
-        "Unable to load dashboard data."
-      );
-
-    } finally {
-
-      setLoading(false);
-
     }
-  };
 
+    setDataState((previous) => ({
+      ...previous,
+      clients,
+      staff,
+    }));
+
+  } catch (err) {
+    console.error(
+      "Failed to load dashboard data:",
+      err
+    );
+
+    setError(
+      err.message ||
+      "Unable to load dashboard data."
+    );
+
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
 
@@ -236,7 +292,31 @@ export function DataProvider({ children }) {
   // ==============================
   // DELETE CLIENT
   // ==============================
+// ==============================
+// REPORTS
+// ==============================
 
+const submitReport = async (clientId, payload) => {
+  const token = getToken();
+
+  const response = await apiRequest(`/clients/${clientId}/reports`, token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  return response?.report || response;
+};
+
+const getReportsForClient = async (clientId, filters = {}) => {
+  const token = getToken();
+
+  const params = new URLSearchParams(filters).toString();
+  const query = params ? `?${params}` : "";
+
+  const response = await apiRequest(`/clients/${clientId}/reports${query}`, token);
+
+  return response?.reports || [];
+};
   const deleteClient = async (id) => {
 
     const token = getToken();
@@ -306,6 +386,8 @@ const createClient = async (payload) => {
         getClient,
         updateClient,
         deleteClient,
+          submitReport,          // add
+  getReportsForClient, 
       }}
     >
       {children}

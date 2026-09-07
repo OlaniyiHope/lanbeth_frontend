@@ -172,12 +172,16 @@ export default function ClientProfile() {
    * Find the client assigned to this staff member.
    */
 
+  // const client =
+  //   data?.clients?.find(
+  //     (item) => item.id === id
+  //   ) || null;
+
+
   const client =
-    data?.clients?.find(
-      (item) => item.id === id
-    ) || null;
-
-
+  data?.clients?.find((item) => item._id === id) ||
+  data?.clients?.find((item) => item.clientId === id) ||
+  null;
 
   if (!client) {
 
@@ -1435,245 +1439,351 @@ function FamilyTab({ client }) {
    REPORTS
 ===================================================== */
 
-function ReportsTab({
-  client,
-  onSubmitReport
-}) {
+// function ReportsTab({
+//   client,
+//   onSubmitReport
+// }) {
 
-  const reports =
-    client.reports || [];
+//   const reports =
+//     client.reports || [];
 
+
+//   return (
+
+//     <div className="info-panel">
+
+//       <div className="info-panel-section">
+
+//         <div className="reports-heading">
+
+//           <div>
+
+//             <h3>
+//               Care Reports
+//             </h3>
+
+//             <p>
+//               Reports submitted for this client.
+//             </p>
+
+//           </div>
+
+
+//           <button
+//             className="primary"
+//             onClick={onSubmitReport}
+//           >
+
+//             <Send size={14} />
+
+//             Submit New Report
+
+//           </button>
+
+//         </div>
+
+
+
+//         {
+//           reports.length === 0 ? (
+
+//             <EmptyState
+//               icon={<ClipboardList size={20} />}
+//               title="No reports submitted yet"
+//               desc="Your submitted daily care reports will appear here."
+//             />
+
+//           ) : (
+
+//             <div className="reports-list">
+
+//               {
+//                 reports.map(
+//                   (report, index) => (
+
+//                     <div
+//                       className="report-card"
+//                       key={
+//                         report.id ||
+//                         index
+//                       }
+//                     >
+
+//                       <div className="report-card-header">
+
+//                         <div>
+
+//                           <b>
+//                             Care Report
+//                           </b>
+
+//                           <small>
+//                             {report.date ||
+//                               "No date"}
+//                           </small>
+
+//                         </div>
+
+
+//                         <span className="report-status">
+
+//                           Submitted
+
+//                         </span>
+
+//                       </div>
+
+
+
+//                       <div className="report-grid">
+
+
+//                         <Info
+//                           label="Staff"
+//                           value={
+//                             report.staff
+//                           }
+//                         />
+
+
+//                         <Info
+//                           label="Medication Given"
+//                           value={
+//                             report.medicationGiven
+//                           }
+//                         />
+
+
+//                         <Info
+//                           label="Meal Given"
+//                           value={
+//                             report.mealGiven
+//                           }
+//                         />
+
+
+//                         <Info
+//                           icon={
+//                             <Clock size={13} />
+//                           }
+//                           label="Bath Time"
+//                           value={
+//                             formatTime(
+//                               report.bathTime
+//                             )
+//                           }
+//                         />
+
+
+//                         <Info
+//                           icon={
+//                             <Clock size={13} />
+//                           }
+//                           label="Bedtime"
+//                           value={
+//                             formatTime(
+//                               report.bedtime
+//                             )
+//                           }
+//                         />
+
+
+//                         <Info
+//                           label="Incident"
+//                           value={
+//                             report.incident
+//                           }
+//                           wide
+//                         />
+
+
+//                         <Info
+//                           label="Comments"
+//                           value={
+//                             report.comments
+//                           }
+//                           wide
+//                         />
+
+
+//                       </div>
+
+
+
+//                       <div className="report-links">
+
+
+//                         {
+//                           report.uploadUrl && (
+
+//                             <a
+//                               href={
+//                                 report.uploadUrl
+//                               }
+//                               target="_blank"
+//                               rel="noreferrer"
+//                             >
+
+//                               <FileText size={13} />
+
+//                               View Report
+
+//                             </a>
+
+//                           )
+//                         }
+
+
+//                         {
+//                           report.downloadUrl && (
+
+//                             <a
+//                               href={
+//                                 report.downloadUrl
+//                               }
+//                               download
+//                             >
+
+//                               <Download size={13} />
+
+//                               Download
+
+//                             </a>
+
+//                           )
+//                         }
+
+
+//                       </div>
+
+
+//                     </div>
+
+//                   )
+//                 )
+//               }
+
+//             </div>
+
+//           )
+//         }
+
+//       </div>
+
+//     </div>
+
+//   );
+
+// }
+
+
+function ReportsTab({ client, onSubmitReport }) {
+  const { getReportsForClient } = useData();
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filterDate, setFilterDate] = useState("");
+  const [error, setError] = useState("");
+
+  const loadReports = async (date) => {
+    try {
+      setLoading(true);
+      setError("");
+      const filters = date ? { date } : {};
+      const result = await getReportsForClient(client._id, filters);
+      setReports(result);
+    } catch (err) {
+      setError(err.message || "Unable to load reports.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client._id]);
+
+  const applyFilter = () => {
+    loadReports(filterDate);
+  };
+
+  const clearFilter = () => {
+    setFilterDate("");
+    loadReports();
+  };
 
   return (
-
     <div className="info-panel">
-
       <div className="info-panel-section">
-
         <div className="reports-heading">
-
           <div>
-
-            <h3>
-              Care Reports
-            </h3>
-
-            <p>
-              Reports submitted for this client.
-            </p>
-
+            <h3>Care Reports</h3>
+            <p>Reports submitted for this client.</p>
           </div>
-
-
-          <button
-            className="primary"
-            onClick={onSubmitReport}
-          >
-
+          <button className="primary" onClick={onSubmitReport}>
             <Send size={14} />
-
             Submit New Report
-
           </button>
-
         </div>
 
-
-
-        {
-          reports.length === 0 ? (
-
-            <EmptyState
-              icon={<ClipboardList size={20} />}
-              title="No reports submitted yet"
-              desc="Your submitted daily care reports will appear here."
+        <div className="report-filter">
+          <label>
+            <span>Filter by Date</span>
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
             />
+          </label>
+          <button type="button" className="primary-light apply-btn" onClick={applyFilter}>
+            Apply Filters
+          </button>
+          {filterDate && (
+            <button type="button" className="outline" onClick={clearFilter}>
+              Clear
+            </button>
+          )}
+        </div>
 
-          ) : (
+        {error && <div className="form-error">{error}</div>}
 
-            <div className="reports-list">
+        {loading ? (
+          <p>Loading reports...</p>
+        ) : reports.length === 0 ? (
+          <EmptyState
+            icon={<ClipboardList size={20} />}
+            title={filterDate ? "No report for this date" : "No reports submitted yet"}
+            desc="Your submitted daily care reports will appear here."
+          />
+        ) : (
+          <div className="reports-list">
+            {reports.map((report) => (
+              <div className="report-card" key={report._id}>
+                <div className="report-card-header">
+                  <div>
+                    <b>Care Report</b>
+                    <small>{new Date(report.reportDate).toLocaleDateString("en-GB")}</small>
+                  </div>
+                  <span className="report-status">Submitted</span>
+                </div>
 
-              {
-                reports.map(
-                  (report, index) => (
-
-                    <div
-                      className="report-card"
-                      key={
-                        report.id ||
-                        index
-                      }
-                    >
-
-                      <div className="report-card-header">
-
-                        <div>
-
-                          <b>
-                            Care Report
-                          </b>
-
-                          <small>
-                            {report.date ||
-                              "No date"}
-                          </small>
-
-                        </div>
-
-
-                        <span className="report-status">
-
-                          Submitted
-
-                        </span>
-
-                      </div>
-
-
-
-                      <div className="report-grid">
-
-
-                        <Info
-                          label="Staff"
-                          value={
-                            report.staff
-                          }
-                        />
-
-
-                        <Info
-                          label="Medication Given"
-                          value={
-                            report.medicationGiven
-                          }
-                        />
-
-
-                        <Info
-                          label="Meal Given"
-                          value={
-                            report.mealGiven
-                          }
-                        />
-
-
-                        <Info
-                          icon={
-                            <Clock size={13} />
-                          }
-                          label="Bath Time"
-                          value={
-                            formatTime(
-                              report.bathTime
-                            )
-                          }
-                        />
-
-
-                        <Info
-                          icon={
-                            <Clock size={13} />
-                          }
-                          label="Bedtime"
-                          value={
-                            formatTime(
-                              report.bedtime
-                            )
-                          }
-                        />
-
-
-                        <Info
-                          label="Incident"
-                          value={
-                            report.incident
-                          }
-                          wide
-                        />
-
-
-                        <Info
-                          label="Comments"
-                          value={
-                            report.comments
-                          }
-                          wide
-                        />
-
-
-                      </div>
-
-
-
-                      <div className="report-links">
-
-
-                        {
-                          report.uploadUrl && (
-
-                            <a
-                              href={
-                                report.uploadUrl
-                              }
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-
-                              <FileText size={13} />
-
-                              View Report
-
-                            </a>
-
-                          )
-                        }
-
-
-                        {
-                          report.downloadUrl && (
-
-                            <a
-                              href={
-                                report.downloadUrl
-                              }
-                              download
-                            >
-
-                              <Download size={13} />
-
-                              Download
-
-                            </a>
-
-                          )
-                        }
-
-
-                      </div>
-
-
-                    </div>
-
-                  )
-                )
-              }
-
-            </div>
-
-          )
-        }
-
+                <div className="report-grid">
+                  <Info label="Staff" value={report.staff?.fullName} />
+                  <Info label="Medication Given" value={report.medication?.completed} />
+                  <Info label="Meal Given" value={report.meal?.foodGiven} />
+                  <Info icon={<Clock size={13} />} label="Bath Time" value={formatTime(report.bathTime)} />
+                  <Info icon={<Clock size={13} />} label="Bedtime" value={formatTime(report.bedtime)} />
+                  <Info label="Incident" value={report.incident?.type} wide />
+                  <Info label="Comments" value={report.generalNotes} wide />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-
     </div>
-
   );
-
 }
-
-
-
 
 
 

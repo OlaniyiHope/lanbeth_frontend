@@ -207,11 +207,11 @@ function getInitials(name = "") {
 export default function SubmitReport() {
   const nav = useNavigate();
 const { id } = useParams();
-const { data, setData } = useData();
+const { data, submitReport } = useData(); // was: const { data, setData } = useData();
 
-const client = data?.clients?.find(
-  (item) => String(item._id || item.id) === String(id)
-);
+const client =
+  data?.clients?.find((item) => item._id === id) ||
+  data?.clients?.find((item) => item.clientId === id);
   const [form, setForm] = useState(initialForm);
   const [reportFile, setReportFile] = useState(null);
   const [error, setError] = useState("");
@@ -304,98 +304,54 @@ const client = data?.clients?.find(
     };
   };
 
-  const submitReport = (event) => {
-    event.preventDefault();
+const [submitting, setSubmitting] = useState(false);
 
-    if (!client) {
-      setError("Client could not be found.");
-      return;
-    }
+const handleSubmitReport = async (event) => {
+  event.preventDefault();
 
-    if (!form.reportDate) {
-      setError("Please select the report date.");
-      return;
-    }
+  if (!client) {
+    setError("Client could not be found.");
+    return;
+  }
 
-    setError("");
+  if (!form.reportDate) {
+    setError("Please select the report date.");
+    return;
+  }
 
-    const staff = getStaffDetails();
+  setError("");
 
-    const newReport = {
-      id: makeId(),
-
-      date: form.reportDate,
-
-      staff: staff.name,
-      staffId: staff.id,
-      staffEmail: staff.email,
-
-      reportFile: reportFile?.name || "",
-
-      uploadUrl: reportFile?.url || "",
-
-      submittedAt: new Date().toISOString(),
-
-      medication: form.medication,
-
-      // These two fields also make the report compatible
-      // with the admin ClientProfile report display.
-      medicationGiven:
-        form.medication.completed === "Yes"
-          ? "Yes"
-          : form.medication.completed === "No"
-          ? "No"
-          : form.medication.completed === "Not Attempted"
-          ? "Not Attempted"
-          : "",
-
-      meal: form.meal,
-
-      mealGiven: form.meal.foodGiven,
-
-      bathTime: form.bathTime,
-      bedtime: form.bedtime,
-
-      temperature: form.temperature,
-
-      bloodPressure: form.bloodPressure,
-
-      incident: form.incident,
-
-      behaviour: form.behaviour,
-
-      comfort: form.comfort,
-
-      bloodTest: form.bloodTest,
-
-      cleaningDone: form.cleaningDone,
-      bedroomCheck: form.bedroomCheck,
-      finances: form.finances,
-      keyworkSession: form.keyworkSession,
-      caseNote: form.caseNote,
-
-      comments: form.generalNotes,
-    };
-
-    const updatedClients = data.clients.map((item) => {
-      if (item.id !== client.id) {
-        return item;
-      }
-
-      return {
-        ...item,
-        reports: [...(item.reports || []), newReport],
-      };
-    });
-
-    setData({
-      ...data,
-      clients: updatedClients,
-    });
-
-    setSubmitted(true);
+  const payload = {
+    reportDate: form.reportDate,
+    medication: form.medication,
+    meal: form.meal,
+    bathTime: form.bathTime,
+    bedtime: form.bedtime,
+    cleaningDone: form.cleaningDone,
+    bedroomCheck: form.bedroomCheck,
+    finances: form.finances,
+    keyworkSession: form.keyworkSession,
+    caseNote: form.caseNote,
+    temperature: form.temperature,
+    bloodPressure: form.bloodPressure,
+    incident: form.incident,
+    behaviour: form.behaviour,
+    comfort: form.comfort,
+    bloodTest: form.bloodTest,
+    generalNotes: form.generalNotes,
+    // reportFile: handled separately once you wire real file upload (see note below)
   };
 
+  try {
+    setSubmitting(true);
+    await submitReport(client._id, payload);
+    setSubmitted(true);
+  } catch (err) {
+    setError(err.message || "Failed to submit report.");
+  } finally {
+    setSubmitting(false);
+  }
+};
   if (!client) {
     return (
       <div className="submit-report-page">

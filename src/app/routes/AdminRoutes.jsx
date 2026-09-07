@@ -13,6 +13,7 @@ import AddClient from '../views/admin/AddClient.jsx';
 import ClientProfile from '../views/admin/ClientProfile.jsx';
 import StaffProfile from '../views/admin/StaffProfile.jsx';
 import AddStaff from '../views/admin/AddStaff.jsx';
+import EditClient from '../views/admin/EditClient.jsx';
 
 export default function AdminRoutes() {
   return (
@@ -24,7 +25,7 @@ export default function AdminRoutes() {
       <Route path="add-client" element={<AddClient />} />
       {/* <Route path="client-profile" element={<Clients />} /> */}
       <Route path="client-documents" element={<Document />} />
-      <Route path="edit-client" element={<Clients />} />
+   <Route path="edit-client/:id" element={<EditClient />} />
       <Route path="expiry-documents" element={<Document />} />
 
       <Route path="staff" element={<Staff />} />

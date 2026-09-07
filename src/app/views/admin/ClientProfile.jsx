@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -51,6 +51,20 @@ function formatTime(value) {
   return `${String(twelveHour).padStart(2, "0")}:${m} ${period}`;
 }
 
+// Formats a Date, ISO string, or date-only string as "17 September 2026"
+// without shifting a day due to timezone conversion.
+function formatDate(value) {
+  if (!value) return null;
+  const isoDateOnly = typeof value === "string" ? value.slice(0, 10) : null;
+  const date = isoDateOnly ? new Date(`${isoDateOnly}T00:00:00`) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 function getInitials(name = "") {
   return name
     .split(" ")
@@ -66,72 +80,67 @@ function getAge(dob) {
   const birth = new Date(dob);
   if (Number.isNaN(birth.getTime())) return null;
   const diff = Date.now() - birth.getTime();
-  return Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
+  const age = Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
+  return age >= 0 ? age : null; // guard against a future DOB
 }
 
 function ClientProfile() {
   const nav = useNavigate();
- 
-  const { data, setData } = useData();
+
+  const { data, setData, deleteClient } = useData();
   const [activeTab, setActiveTab] = useState("personal");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-const [staff, setStaff] = useState([]);
-const [selectedStaff, setSelectedStaff] = useState("");
-const [loadingStaff, setLoadingStaff] = useState(false);
-const [assigningStaff, setAssigningStaff] = useState(false);
-const [staffError, setStaffError] = useState("");
-const [assignSuccess, setAssignSuccess] = useState("");
+  const [staff, setStaff] = useState([]);
+  const [selectedStaff, setSelectedStaff] = useState("");
+  const [loadingStaff, setLoadingStaff] = useState(false);
+  const [assigningStaff, setAssigningStaff] = useState(false);
+  const [staffError, setStaffError] = useState("");
+  const [assignSuccess, setAssignSuccess] = useState("");
   const { id } = useParams();
 
-const client =
-  data.clients.find((c) => c.clientId === id) ||
-  data.clients.find((c) => c._id === id);
+  const client =
+    data.clients.find((c) => c.clientId === id) ||
+    data.clients.find((c) => c._id === id);
+
   useEffect(() => {
-  const fetchStaff = async () => {
-    try {
-      setLoadingStaff(true);
-      setStaffError("");
+    const fetchStaff = async () => {
+      try {
+        setLoadingStaff(true);
+        setStaffError("");
 
-      const token = localStorage.getItem("lanbeth-auth-token");
+        const token = localStorage.getItem("lanbeth-auth-token");
 
-      if (!token) {
-        setStaffError("You are not authenticated.");
-        return;
-      }
+        if (!token) {
+          setStaffError("You are not authenticated.");
+          return;
+        }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/staff`,
-        {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/staff`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result?.message || result?.error || "Failed to fetch staff.");
         }
-      );
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result?.message ||
-          result?.error ||
-          "Failed to fetch staff."
-        );
+        setStaff(result.staff || result.data || result || []);
+      } catch (error) {
+        console.error("Fetch staff error:", error);
+        setStaffError(error.message || "Unable to load staff.");
+      } finally {
+        setLoadingStaff(false);
       }
+    };
 
-      setStaff(result.staff || result.data || result || []);
-    } catch (error) {
-      console.error("Fetch staff error:", error);
-      setStaffError(error.message || "Unable to load staff.");
-    } finally {
-      setLoadingStaff(false);
-    }
-  };
-
-  fetchStaff();
-}, []);
+    fetchStaff();
+  }, []);
 
   if (!client) {
     return (
@@ -143,12 +152,13 @@ const client =
 
   const age = getAge(client.dateOfBirth);
 
-  const removeClient = () => {
-    setData({
-      ...data,
-      clients: data.clients.filter((c) => c.id !== client.id),
-    });
-    nav("/admin/clients");
+  const removeClient = async () => {
+    try {
+      await deleteClient(client._id || client.clientId);
+      nav("/admin/clients");
+    } catch (err) {
+      console.error("Delete client error:", err);
+    }
   };
 
   return (
@@ -167,14 +177,14 @@ const client =
       <div className="client-hero">
         <div className="client-hero-main">
           <span className="client-hero-avatar">
-            {client.initials || getInitials(client.name)}
+            {client.initials || getInitials(client.fullName)}
           </span>
           <div className="client-hero-id">
-            <h2>{client.name}</h2>
-            <span className="client-hero-code">Client ID: {client.id}</span>
+            <h2>{client.fullName}</h2>
+            <span className="client-hero-code">Client ID: {client.clientId}</span>
             <div className="client-hero-meta">
               {age !== null && <span>{age} years old</span>}
-              {client.sex && <span>{client.sex}</span>}
+              {client.gender && <span>{client.gender}</span>}
               {client.phone && (
                 <span>
                   <Phone size={12} /> {client.phone}
@@ -194,8 +204,8 @@ const client =
             Delete
           </button>
           <button
-            className="primary-light"
-            onClick={() => nav(`/admin/edit-client/${client.id}`)}
+            className="primary"
+            onClick={() => nav(`/admin/edit-client/${client.clientId}`)}
           >
             <Pencil size={14} />
             Edit Profile
@@ -251,7 +261,7 @@ const client =
       {confirmDelete && (
         <Modal title="Delete Client" onClose={() => setConfirmDelete(false)}>
           <ConfirmDelete
-            name={client.name}
+            name={client.fullName}
             onCancel={() => setConfirmDelete(false)}
             onConfirm={removeClient}
           />
@@ -260,6 +270,7 @@ const client =
     </div>
   );
 }
+
 function AssignStaffSection({
   client,
   staff,
@@ -275,115 +286,69 @@ function AssignStaffSection({
 }) {
   const currentStaff = client.assignedStaff || [];
 
-const assignStaff = async () => {
-  if (!selectedStaff) {
-    setStaffError("Please select a staff member.");
-    return;
-  }
-
-  try {
-    setAssigningStaff(true);
-    setStaffError("");
-    setAssignSuccess("");
-
-    const token =
-      localStorage.getItem(
-        "lanbeth-auth-token"
-      );
-
-    if (!token) {
-      setStaffError(
-        "You are not authenticated."
-      );
+  const assignStaff = async () => {
+    if (!selectedStaff) {
+      setStaffError("Please select a staff member.");
       return;
     }
 
-    // Get currently assigned staff IDs
-    const currentStaffIds =
-      (client.assignedStaff || []).map(
-        (member) =>
-          member._id ||
-          member.id ||
-          member.staffId ||
-          member
-      );
+    try {
+      setAssigningStaff(true);
+      setStaffError("");
+      setAssignSuccess("");
 
-    // Prevent duplicate
-    if (
-      currentStaffIds.some(
-        (staffId) =>
-          staffId.toString() ===
-          selectedStaff.toString()
-      )
-    ) {
-      setStaffError(
-        "This staff member is already assigned to this client."
-      );
-      return;
-    }
+      const token = localStorage.getItem("lanbeth-auth-token");
 
-    // Add newly selected staff
-    const updatedStaffIds = [
-      ...currentStaffIds,
-      selectedStaff,
-    ];
-
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/clients/${client._id}/assign-staff`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type":
-            "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          staffIds: updatedStaffIds,
-        }),
+      if (!token) {
+        setStaffError("You are not authenticated.");
+        return;
       }
-    );
 
-    const result =
-      await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        result?.message ||
-          result?.error ||
-          "Failed to assign staff."
+      const currentStaffIds = (client.assignedStaff || []).map(
+        (member) => member._id || member.id || member.staffId || member
       );
+
+      if (currentStaffIds.some((staffId) => staffId.toString() === selectedStaff.toString())) {
+        setStaffError("This staff member is already assigned to this client.");
+        return;
+      }
+
+      const updatedStaffIds = [...currentStaffIds, selectedStaff];
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/clients/${client._id}/assign-staff`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ staffIds: updatedStaffIds }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.error || "Failed to assign staff.");
+      }
+
+      setAssignSuccess("Staff member assigned successfully.");
+      setSelectedStaff("");
+
+      if (result.client) {
+        client.assignedStaff = result.client.assignedStaff;
+      }
+
+      window.dispatchEvent(new Event("client-updated"));
+    } catch (error) {
+      console.error("Assign staff error:", error);
+      setStaffError(error.message || "Unable to assign staff member.");
+    } finally {
+      setAssigningStaff(false);
     }
+  };
 
-    setAssignSuccess(
-      "Staff member assigned successfully."
-    );
-
-    setSelectedStaff("");
-
-    // Update client data in the page
-    if (result.client) {
-      client.assignedStaff =
-        result.client.assignedStaff;
-    }
-
-    // Notify other components
-    window.dispatchEvent(
-      new Event("client-updated")
-    );
-  } catch (error) {
-    console.error(
-      "Assign staff error:",
-      error
-    );
-
-    setStaffError(
-      error.message ||
-        "Unable to assign staff member."
-    );
-  } finally {
-    setAssigningStaff(false);
-  }
-};
   return (
     <div className="assign-staff-card">
       <div className="assign-staff-header">
@@ -394,15 +359,12 @@ const assignStaff = async () => {
 
           <div>
             <h3>Assign Staff</h3>
-            <p>
-              Assign care staff members who will be responsible for this client.
-            </p>
+            <p>Assign care staff members who will be responsible for this client.</p>
           </div>
         </div>
       </div>
 
       <div className="assign-staff-body">
-
         <div className="assign-staff-form">
           <label>
             <span>Select Staff Member</span>
@@ -416,21 +378,12 @@ const assignStaff = async () => {
               }}
               disabled={loadingStaff || assigningStaff}
             >
-              <option value="">
-                {loadingStaff
-                  ? "Loading staff..."
-                  : "Select a staff member"}
-              </option>
+              <option value="">{loadingStaff ? "Loading staff..." : "Select a staff member"}</option>
 
               {staff.map((member) => (
-                <option
-                  key={member._id || member.id}
-                  value={member._id || member.id}
-                >
+                <option key={member._id || member.id} value={member._id || member.id}>
                   {member.fullName || member.name || member.username}
-                  {member.jobTitle
-                    ? ` — ${member.jobTitle}`
-                    : ""}
+                  {member.jobTitle ? ` — ${member.jobTitle}` : ""}
                 </option>
               ))}
             </select>
@@ -440,31 +393,15 @@ const assignStaff = async () => {
             type="button"
             className="primary"
             onClick={assignStaff}
-            disabled={
-              !selectedStaff ||
-              assigningStaff ||
-              loadingStaff
-            }
+            disabled={!selectedStaff || assigningStaff || loadingStaff}
           >
             <UserPlus size={15} />
-
-            {assigningStaff
-              ? "Assigning..."
-              : "Assign Staff"}
+            {assigningStaff ? "Assigning..." : "Assign Staff"}
           </button>
         </div>
 
-        {staffError && (
-          <div className="assign-staff-error">
-            {staffError}
-          </div>
-        )}
-
-        {assignSuccess && (
-          <div className="assign-staff-success">
-            {assignSuccess}
-          </div>
-        )}
+        {staffError && <div className="assign-staff-error">{staffError}</div>}
+        {assignSuccess && <div className="assign-staff-success">{assignSuccess}</div>}
 
         <div className="assigned-staff-list">
           <div className="assigned-staff-heading">
@@ -475,48 +412,21 @@ const assignStaff = async () => {
           {currentStaff.length === 0 ? (
             <div className="no-assigned-staff">
               <Users size={18} />
-
               <div>
                 <strong>No staff assigned</strong>
-                <p>
-                  Select a staff member above to assign them
-                  to this client.
-                </p>
+                <p>Select a staff member above to assign them to this client.</p>
               </div>
             </div>
           ) : (
             <div className="assigned-staff-grid">
               {currentStaff.map((member, index) => (
-                <div
-                  className="assigned-staff-item"
-                  key={
-                    member._id ||
-                    member.id ||
-                    member.staffId ||
-                    index
-                  }
-                >
+                <div className="assigned-staff-item" key={member._id || member.id || member.staffId || index}>
                   <span className="assigned-staff-avatar">
-                    {getInitials(
-                      member.fullName ||
-                      member.name ||
-                      member.username ||
-                      "Staff"
-                    )}
+                    {getInitials(member.fullName || member.name || member.username || "Staff")}
                   </span>
-
                   <div>
-                    <strong>
-                      {member.fullName ||
-                        member.name ||
-                        member.username}
-                    </strong>
-
-                    <small>
-                      {member.jobTitle ||
-                        member.role ||
-                        "Staff"}
-                    </small>
+                    <strong>{member.fullName || member.name || member.username}</strong>
+                    <small>{member.jobTitle || member.role || "Staff"}</small>
                   </div>
                 </div>
               ))}
@@ -536,7 +446,7 @@ function PersonalInfoTab({ client }) {
         <div className="info-grid">
           <Info icon={<Mail size={13} />} label="Email" value={client.email} />
           <Info icon={<Phone size={13} />} label="Phone" value={client.phone} />
-          <Info icon={<Cake size={13} />} label="Date of Birth" value={client.dateOfBirth} />
+          <Info icon={<Cake size={13} />} label="Date of Birth" value={formatDate(client.dateOfBirth)} />
           <Info icon={<MapPin size={13} />} label="Address" value={client.address} />
           <Info label="Post Code" value={client.postCode} />
           <Info label="Region" value={client.region} />
@@ -546,16 +456,12 @@ function PersonalInfoTab({ client }) {
       <div className="info-panel-section">
         <h3>Background</h3>
         <div className="info-grid">
-          <Info label="Sex" value={client.sex} />
+          <Info label="Gender" value={client.gender} />
           <Info label="Marital Status" value={client.maritalStatus} />
           <Info label="Religion" value={client.religion} />
           <Info label="Ethnicity" value={client.ethnicity} />
           <Info label="Key Safe Code" value={client.keySafeCode} />
-          <Info
-            label="Communication Preference"
-            value={client.communicationPreference}
-            wide
-          />
+          <Info label="Communication Preference" value={client.communicationPreference} wide />
         </div>
       </div>
     </div>
@@ -568,7 +474,7 @@ function Info({ icon, label, value, wide }) {
       <small>
         {icon} {label}
       </small>
-      <b>{value?.trim ? (value.trim() || "—") : value || "—"}</b>
+      <b>{value?.trim ? value.trim() || "—" : value || "—"}</b>
     </div>
   );
 }
@@ -594,25 +500,43 @@ function MedicalHistoryTab({ client }) {
 }
 
 function FoodIntakeTab({ client }) {
-  const meal = client.meal || {};
-  const hasMeal = meal.type || meal.description || meal.time;
+  const meals = client.foodIntake || [];
   return (
     <div className="info-panel">
       <div className="info-panel-section">
         <h3>Current Food Intake Plan</h3>
-        {hasMeal ? (
-          <div className="info-grid">
-            <Info label="Meal Type" value={meal.type} />
-            <Info label="Meal Time" value={formatTime(meal.time)} />
-            <Info label="Meal Day" value={meal.day} />
-            <Info label="Meal Description" value={meal.description} wide />
-          </div>
-        ) : (
+        {meals.length === 0 ? (
           <EmptyState
             icon={<Utensils size={20} />}
             title="No food intake plan recorded"
             desc="Meal type, timing, and dietary notes will appear here."
           />
+        ) : (
+          <div className="medication-list">
+            {meals.map((meal, i) => (
+              <div className="medication-card" key={meal._id || i}>
+                <span className="medication-icon">
+                  <Utensils size={15} />
+                </span>
+                <div className="medication-details">
+                  <div className="medication-top">
+                    <b>{meal.mealType || "Meal"}</b>
+                    {meal.mealDay && <span className="medication-badge">{meal.mealDay}</span>}
+                  </div>
+                  <div className="medication-meta">
+                    {meal.mealTime && (
+                      <span>
+                        <Clock size={12} /> {formatTime(meal.mealTime)}
+                      </span>
+                    )}
+                  </div>
+                  {meal.mealDescription && (
+                    <p className="medication-instructions">{meal.mealDescription}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -634,7 +558,7 @@ function MedicationsTab({ client }) {
         ) : (
           <div className="medication-list">
             {medications.map((med, i) => (
-              <div className="medication-card" key={med.id || i}>
+              <div className="medication-card" key={med._id || i}>
                 <span className="medication-icon">
                   <Pill size={15} />
                 </span>
@@ -649,11 +573,9 @@ function MedicationsTab({ client }) {
                         <Clock size={12} /> {formatTime(med.time)}
                       </span>
                     )}
-                    {med.date && <span>{med.date}</span>}
+                    {med.date && <span>{formatDate(med.date)}</span>}
                   </div>
-                  {med.instructions && (
-                    <p className="medication-instructions">{med.instructions}</p>
-                  )}
+                  {med.instructions && <p className="medication-instructions">{med.instructions}</p>}
                 </div>
               </div>
             ))}
@@ -665,13 +587,13 @@ function MedicationsTab({ client }) {
 }
 
 function ActivitiesTab({ client }) {
-  const hasActivities = client.favouriteActivities && client.favouriteActivities.trim();
+  const activities = client.favoriteActivities && client.favoriteActivities.trim();
   return (
     <div className="info-panel">
       <div className="info-panel-section">
         <h3>Favourite Activities</h3>
-        {hasActivities ? (
-          <p className="note-block">{client.favouriteActivities}</p>
+        {activities ? (
+          <p className="note-block">{client.favoriteActivities}</p>
         ) : (
           <EmptyState
             icon={<Heart size={20} />}
@@ -753,10 +675,10 @@ function DocumentsTab({ client }) {
         ) : (
           <div className="doc-list">
             {documents.map((doc, i) => (
-              <div className="doc-row" key={doc.id || i}>
+              <div className="doc-row" key={doc._id || i}>
                 <FileText size={15} />
-                <span className="doc-name">{doc.name}</span>
-                <a href={doc.url} target="_blank" rel="noreferrer">
+                <span className="doc-name">{doc.fileName}</span>
+                <a href={doc.fileUrl} target="_blank" rel="noreferrer">
                   View
                 </a>
               </div>
@@ -769,18 +691,18 @@ function DocumentsTab({ client }) {
 }
 
 function FamilyTab({ client }) {
-  const hasContact =
-    client.familyMemberName || client.nextOfKinName || client.nextOfKinPhone;
+  const contact = client.emergencyContact || {};
+  const hasContact = contact.familyMemberName || contact.nextOfKinName || contact.nextOfKinPhone;
   return (
     <div className="info-panel">
       <div className="info-panel-section">
         <h3>Family & Emergency Contact</h3>
         {hasContact ? (
           <div className="info-grid">
-            <Info icon={<Users size={13} />} label="Family Member Name" value={client.familyMemberName} />
-            <Info label="Relationship" value={client.relationship} />
-            <Info icon={<UserPlus size={13} />} label="Next of Kin Name" value={client.nextOfKinName} />
-            <Info icon={<Phone size={13} />} label="Next of Kin Phone" value={client.nextOfKinPhone} />
+            <Info icon={<Users size={13} />} label="Family Member Name" value={contact.familyMemberName} />
+            <Info label="Relationship" value={contact.relationship} />
+            <Info icon={<UserPlus size={13} />} label="Next of Kin Name" value={contact.nextOfKinName} />
+            <Info icon={<Phone size={13} />} label="Next of Kin Phone" value={contact.nextOfKinPhone} />
           </div>
         ) : (
           <EmptyState
@@ -797,9 +719,7 @@ function FamilyTab({ client }) {
 function ReportsTab({ client }) {
   const [filterDate, setFilterDate] = useState("");
   const reports = client.reports || [];
-  const matched = filterDate
-    ? reports.filter((r) => r.date === filterDate)
-    : reports;
+  const matched = filterDate ? reports.filter((r) => r.date === filterDate) : reports;
   const report = matched[0];
 
   return (
@@ -807,11 +727,7 @@ function ReportsTab({ client }) {
       <div className="report-filter">
         <label>
           <span>Filter by Date</span>
-          <input
-            type="date"
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-          />
+          <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
         </label>
         <button className="primary-light apply-btn" type="button">
           <Search size={14} />

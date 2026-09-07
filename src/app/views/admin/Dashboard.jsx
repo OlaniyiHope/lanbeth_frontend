@@ -137,7 +137,9 @@ function Dashboard() {
     (member) =>
       String(member.status || "").toLowerCase() === "active"
   ).length;
-
+const reports = Array.isArray(data?.reports)
+  ? data.reports
+  : [];
   return (
     <div className="dashboard-page">
 
@@ -234,13 +236,16 @@ function Dashboard() {
           }
         />
 
-        <Stat
-          icon={<FileText />}
-          label="Reports Submitted"
-          value="—"
-          trend="Reports API required"
-        />
-
+     <Stat
+  icon={<FileText />}
+  label="Reports Submitted"
+  value={loading ? "—" : reports.length}
+  trend={
+    loading
+      ? "Loading..."
+      : "Total submitted reports"
+  }
+/>
         <Stat
           icon={<CalendarDays />}
           label="Expiring Documents"

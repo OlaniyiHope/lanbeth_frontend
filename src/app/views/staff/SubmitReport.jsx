@@ -445,8 +445,8 @@ const handleSubmitReport = async (event) => {
 
         <div className="report-client-info">
           <span>CLIENT</span>
-          <h2>{client.name}</h2>
-          <p>Client ID: {client.id}</p>
+           <h2>{client.fullName}</h2>
+  <p>Client ID: {client.clientId}</p>
         </div>
 
         <div className="report-date">
@@ -460,7 +460,7 @@ const handleSubmitReport = async (event) => {
         </div>
       </div>
 
-      <form onSubmit={submitReport} className="care-report-form">
+    <form onSubmit={handleSubmitReport} className="care-report-form">
         {/* ==============================
             MEDICATION
         ============================== */}

@@ -85,6 +85,7 @@ export function DataProvider({ children }) {
       ...localData,
       clients: [],
       staff: [],
+        reports: [],
     };
   });
 
@@ -165,10 +166,65 @@ export function DataProvider({ children }) {
 
   //   }
   // };
+// const loadLiveData = async () => {
+//   if (!user) {
+//     return;
+//   }
+
+//   const token = getToken();
+
+//   if (!token) {
+//     setError("Authentication token is missing.");
+//     return;
+//   }
+
+//   setLoading(true);
+//   setError("");
+
+//   try {
+//     // Everyone who is authorized can load their clients
+//     const clientsResponse = await apiRequest("/clients", token);
+
+//     const clients = extractArray(
+//       clientsResponse,
+//       ["clients", "results"]
+//     );
+
+//     let staff = [];
+
+//     // Only admins should load the staff directory
+//     if (user.role === "admin") {
+//       const staffResponse = await apiRequest("/staff", token);
+
+//       staff = extractArray(
+//         staffResponse,
+//         ["staff", "staffList", "results"]
+//       );
+//     }
+
+//     setDataState((previous) => ({
+//       ...previous,
+//       clients,
+//       staff,
+//     }));
+
+//   } catch (err) {
+//     console.error(
+//       "Failed to load dashboard data:",
+//       err
+//     );
+
+//     setError(
+//       err.message ||
+//       "Unable to load dashboard data."
+//     );
+
+//   } finally {
+//     setLoading(false);
+//   }
+// };
 const loadLiveData = async () => {
-  if (!user) {
-    return;
-  }
+  if (!user) return;
 
   const token = getToken();
 
@@ -181,48 +237,45 @@ const loadLiveData = async () => {
   setError("");
 
   try {
-    // Everyone who is authorized can load their clients
     const clientsResponse = await apiRequest("/clients", token);
 
-    const clients = extractArray(
-      clientsResponse,
-      ["clients", "results"]
-    );
+    const clients = extractArray(clientsResponse, [
+      "clients",
+      "results",
+    ]);
 
     let staff = [];
 
-    // Only admins should load the staff directory
     if (user.role === "admin") {
       const staffResponse = await apiRequest("/staff", token);
 
-      staff = extractArray(
-        staffResponse,
-        ["staff", "staffList", "results"]
-      );
+      staff = extractArray(staffResponse, [
+        "staff",
+        "staffList",
+        "results",
+      ]);
     }
+
+    // const reportsResponse = await apiRequest("/reports", token);
+const reportsResponse = await apiRequest("/report/my-report", token);
+    const reports = extractArray(reportsResponse, [
+      "reports",
+      "results",
+    ]);
 
     setDataState((previous) => ({
       ...previous,
       clients,
       staff,
+      reports,
     }));
-
   } catch (err) {
-    console.error(
-      "Failed to load dashboard data:",
-      err
-    );
-
-    setError(
-      err.message ||
-      "Unable to load dashboard data."
-    );
-
+    console.error("Failed to load dashboard data:", err);
+    setError(err.message || "Unable to load dashboard data.");
   } finally {
     setLoading(false);
   }
 };
-
   useEffect(() => {
 
     if (user) {
@@ -295,7 +348,13 @@ const loadLiveData = async () => {
 // ==============================
 // REPORTS
 // ==============================
+const getAllReports = async () => {
+  const token = getToken();
 
+  // const response = await apiRequest("/reports", token);
+const response = await apiRequest("/report/my-report", token);
+  return response?.reports || [];
+};
 const submitReport = async (clientId, payload) => {
   const token = getToken();
 
@@ -388,6 +447,8 @@ const createClient = async (payload) => {
         deleteClient,
           submitReport,          // add
   getReportsForClient, 
+
+    getAllReports,
       }}
     >
       {children}

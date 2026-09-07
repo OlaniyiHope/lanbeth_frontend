@@ -281,7 +281,7 @@ export default function ClientProfile() {
           className="primary report-button"
           onClick={() =>
             navigate(
-              `/staff/submit-report/${client.id}`
+                   `/staff/submit-report/${client._id}`
             )
           }
         >

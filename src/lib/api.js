@@ -89,3 +89,14 @@ export function register(payload) {
 export function fetchMe() {
   return request('/api/auth/me');
 }
+
+export function getStaffById(id) {
+  return request(`/api/staff/${id}`);
+}
+
+export function updateStaffMember(id, payload) {
+  return request(`/api/staff/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}

@@ -14,6 +14,7 @@ import ClientProfile from '../views/admin/ClientProfile.jsx';
 import StaffProfile from '../views/admin/StaffProfile.jsx';
 import AddStaff from '../views/admin/AddStaff.jsx';
 import EditClient from '../views/admin/EditClient.jsx';
+import EditStaff from '../views/admin/EditSttaff.jsx';
 
 export default function AdminRoutes() {
   return (
@@ -32,6 +33,7 @@ export default function AdminRoutes() {
 
       <Route path="staff-documents" element={<Document />} />
     <Route path="staff-profile/:id" element={<StaffProfile />} />
+    <Route path="edit-staff/:id" element={<EditStaff />} />
       <Route path="add-staff" element={<AddStaff />} />
 
       <Route path="policies" element={<Policies />} />

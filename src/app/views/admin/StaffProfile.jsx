@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -59,7 +60,12 @@ function StaffProfile() {
   const [activeTab, setActiveTab] = useState("personal");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const staff = data.staff.find((s) => s.id === id) || data.staff[0];
+  // Mongo documents come back with `_id`, not `id` — match on either so
+  // this works regardless of which shape the record is in. NOTE: this no
+  // longer falls back to data.staff[0] on a miss — if the id in the URL
+  // doesn't match anything, we show "No staff member found" instead of
+  // silently showing the wrong person.
+  const staff = data.staff.find((s) => String(s._id || s.id) === id);
 
   if (!staff) {
     return (
@@ -69,17 +75,18 @@ function StaffProfile() {
     );
   }
 
+  const staffId = staff._id || staff.id;
   const age = getAge(staff.dateOfBirth);
 
   const removeStaff = () => {
-    setData({ ...data, staff: data.staff.filter((s) => s.id !== staff.id) });
+    setData({ ...data, staff: data.staff.filter((s) => (s._id || s.id) !== staffId) });
     nav("/admin/staff");
   };
 
   const saveDocuments = (documents) => {
     setData({
       ...data,
-      staff: data.staff.map((s) => (s.id === staff.id ? { ...s, documents } : s)),
+      staff: data.staff.map((s) => ((s._id || s.id) === staffId ? { ...s, documents } : s)),
     });
   };
 
@@ -102,7 +109,7 @@ function StaffProfile() {
           <div className="staff-hero-id">
             <h2>{staff.name}</h2>
             <span className="staff-hero-code">
-              {staff.role || "Staff"} · ID: {staff.id}
+              {staff.role || "Staff"} · ID: {staffId}
             </span>
             <div className="staff-hero-meta">
               {age !== null && <span>{age} years old</span>}
@@ -125,7 +132,7 @@ function StaffProfile() {
             <Trash2 size={14} />
             Delete
           </button>
-          <button className="primary-light" onClick={() => nav(`/admin/edit-staff/${staff.id}`)}>
+          <button className="primary-light" onClick={() => nav(`/admin/edit-staff/${staffId}`)}>
             <Pencil size={14} />
             Edit Profile
           </button>

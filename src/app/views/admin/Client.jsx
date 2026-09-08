@@ -121,13 +121,13 @@ function Clients() {
   View
 </button>
 
-                <button
-                  className="outline small"
-                  onClick={() => setModal({ type: "edit", item: client })}
-                >
-                  <Pencil size={13} />
-                  Edit
-                </button>
+            <button
+  className="outline small"
+  onClick={() => nav(`/admin/edit-client/${client.clientId || client._id || client.id}`)}
+>
+  <Pencil size={13} />
+  Edit
+</button>
 
                 <button
                   className="danger-btn small"

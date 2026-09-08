@@ -609,6 +609,7 @@ const REGION_OPTIONS = [
 
 const emptyStaff = {
   name: "",
+    username: "",
   email: "",
   phone: "",
   gender: "",
@@ -645,7 +646,8 @@ function generateStaffId(count) {
 
 function AddStaff() {
   const nav = useNavigate();
-  const { data, setData } = useData();
+  // const { data, setData } = useData();
+  const { createStaff } = useData();
   const [values, setValues] = useState(emptyStaff);
   const [documents, setDocuments] = useState([]);
   const [docType, setDocType] = useState(DOC_TYPES[0]);
@@ -680,6 +682,115 @@ function AddStaff() {
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5001";
 
+// const submit = async (e) => {
+//   e.preventDefault();
+
+//   setError("");
+
+//   if (
+//     !values.name.trim() ||
+//     !values.username.trim() ||
+//     !values.email.trim() ||
+//     !values.password.trim()
+//   ) {
+//     setError(
+//       "Full name, username, email, and password are required."
+//     );
+//     return;
+//   }
+
+//   if (values.password.length < 6) {
+//     setError("Password must be at least 6 characters.");
+//     return;
+//   }
+
+//   if (values.password !== values.confirmPassword) {
+//     setError("Passwords do not match.");
+//     return;
+//   }
+
+//   try {
+//     const token = localStorage.getItem("lanbeth-auth-token");
+
+//     if (!token) {
+//       setError("You are not authenticated. Please log in again.");
+//       return;
+//     }
+
+//     const payload = {
+//       role: "staff",
+
+//       fullName: values.name.trim(),
+//       username: values.username.trim(),
+//       email: values.email.trim(),
+//       password: values.password,
+
+//       phone: values.phone,
+//       address: values.address,
+//       postcode: values.postCode,
+//       region: values.region,
+
+//       gender: values.gender || undefined,
+//       dateOfBirth: values.dateOfBirth || undefined,
+
+//       maritalStatus: values.maritalStatus,
+//       religion: values.religion,
+//       ethnicity: values.ethnicity,
+
+//       positionAppliedFor: values.positionAppliedFor,
+//       workPermitExpiry: values.workPermitExpiry || undefined,
+
+//       jobTitle: values.role,
+
+//       status:
+//         values.status === "Active"
+//           ? "active"
+//           : "inactive",
+
+//       documents: documents.map((doc) => ({
+//         documentType: doc.type,
+//         fileName: doc.name,
+//         fileUrl: doc.url,
+//         expiryDate: doc.expiry || undefined,
+//       })),
+//     };
+
+//     const response = await fetch(
+//       `${API_BASE_URL}/api/auth/register`,
+//       {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${token}`,
+//         },
+//         body: JSON.stringify(payload),
+//       }
+//     );
+
+//     const result = await response.json();
+
+//     if (!response.ok) {
+//       throw new Error(
+//         result?.message ||
+//         result?.error ||
+//         "Failed to create staff account."
+//       );
+//     }
+
+//     console.log("Staff created successfully:", result);
+
+//     nav("/admin/staff");
+
+//   } catch (err) {
+//     console.error("Create staff error:", err);
+
+//     setError(
+//       err.message ||
+//       "Unable to create staff account."
+//     );
+//   }
+// };
+
 const submit = async (e) => {
   e.preventDefault();
 
@@ -708,13 +819,6 @@ const submit = async (e) => {
   }
 
   try {
-    const token = localStorage.getItem("lanbeth-auth-token");
-
-    if (!token) {
-      setError("You are not authenticated. Please log in again.");
-      return;
-    }
-
     const payload = {
       role: "staff",
 
@@ -753,30 +857,16 @@ const submit = async (e) => {
       })),
     };
 
-    const response = await fetch(
-      `${API_BASE_URL}/api/auth/register`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      }
+    // createStaff sends the request AND updates DataContext.staff
+    const createdStaff = await createStaff(payload);
+
+    console.log(
+      "Staff created successfully:",
+      createdStaff
     );
 
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        result?.message ||
-        result?.error ||
-        "Failed to create staff account."
-      );
-    }
-
-    console.log("Staff created successfully:", result);
-
+    // Go back to the staff list.
+    // The new staff is already in DataContext at this point.
     nav("/admin/staff");
 
   } catch (err) {

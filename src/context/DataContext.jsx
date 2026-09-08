@@ -13,9 +13,10 @@ const DataContext = createContext(null);
 
 export const useData = () => useContext(DataContext);
 
-const API_BASE_URL =
-  import.meta.env.VITE_BASE_URL || "http://localhost:5001/api";
-
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5001"
+).replace(/\/$/, "");
 
 async function apiRequest(endpoint, token, options = {}) {
   if (!token) {
@@ -348,6 +349,8 @@ const reportsResponse = await apiRequest("/report/my-report", token);
 // ==============================
 // REPORTS
 // ==============================
+
+
 const getAllReports = async () => {
   const token = getToken();
 
@@ -417,6 +420,33 @@ const createClient = async (payload) => {
   return created;
 };
 
+const createStaff = async (payload) => {
+  const token = getToken();
+
+  const response = await apiRequest("/auth/register", token, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  // Adjust these depending on your backend response.
+  const createdStaff =
+    response?.staff ||
+    response?.user ||
+    response?.data ||
+    response;
+
+  // Immediately update the global staff list.
+  setDataState((previous) => ({
+    ...previous,
+    staff: [
+      ...(Array.isArray(previous.staff) ? previous.staff : []),
+      createdStaff,
+    ],
+  }));
+
+  return createdStaff;
+};
+
 
   // ==============================
   // LOCAL DATA SETTER
@@ -442,6 +472,7 @@ const createClient = async (payload) => {
 
         refreshData: loadLiveData,
  createClient,
+ createStaff,
         getClient,
         updateClient,
         deleteClient,

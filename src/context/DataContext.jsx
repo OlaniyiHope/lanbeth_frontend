@@ -13,10 +13,12 @@ const DataContext = createContext(null);
 
 export const useData = () => useContext(DataContext);
 
+// const API_BASE_URL =
+//   import.meta.env.VITE_BASE_URL || "http://localhost:5001/api";
 const API_BASE_URL = (
   import.meta.env.VITE_API_URL ||
   "http://localhost:5001"
-).replace(/\/$/, "");
+).replace(/\/$/, "") + "/api";
 
 async function apiRequest(endpoint, token, options = {}) {
   if (!token) {

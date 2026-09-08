@@ -100,3 +100,9 @@ export function updateStaffMember(id, payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export function deleteStaffMember(id) {
+  return request(`/api/staff/${id}`, {
+    method: 'DELETE',
+  });
+}

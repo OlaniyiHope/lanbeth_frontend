@@ -85,18 +85,13 @@
 //                     View
 //                   </button>
 
-//                   {/* <button
+//                   <button
 //                     className="outline small"
-//                     onClick={() => setModal({ type: "edit", item: staff })}
+//                     onClick={() => nav(`/admin/edit-staff/${id}`)}
 //                   >
 //                     <Pencil size={13} />
-//                     Edit
-//                   </button> */}
-
-//                      <button   className="outline small" onClick={() => nav(`/admin/edit-staff/${staffId}`)}>
-//             <Pencil size={13} />
-//             Edit Profile
-//           </button>
+//                     Edit Profile
+//                   </button>
 
 //                   <button
 //                     className="danger-btn small"
@@ -129,22 +124,6 @@
 //           onClose={() => setModal(null)}
 //         >
 //           {modal.type === "view" && <StaffDetail staff={modal.item} />}
-
-//           {modal.type === "edit" && (
-//             <InlineEdit
-//               item={modal.item}
-//               fields={["name", "role", "email", "status"]}
-//               onSave={(updatedStaff) => {
-//                 setData({
-//                   ...data,
-//                   staff: data.staff.map((staff) =>
-//                     staffId(staff) === staffId(updatedStaff) ? { ...staff, ...updatedStaff } : staff
-//                   ),
-//                 });
-//                 setModal(null);
-//               }}
-//             />
-//           )}
 
 //           {modal.type === "delete" && (
 //             <ConfirmDelete
@@ -199,32 +178,6 @@
 //   );
 // }
 
-// function InlineEdit({ item, fields, onSave }) {
-//   const [values, setValues] = useState({ ...item });
-
-//   const submit = (e) => {
-//     e.preventDefault();
-//     onSave(values);
-//   };
-
-//   return (
-//     <form className="inline-form" onSubmit={submit}>
-//       <div className="form-grid">
-//         {fields.map((field) => (
-//           <label key={field}>
-//             {field}
-//             <input
-//               value={values[field] || ""}
-//               onChange={(e) => setValues({ ...values, [field]: e.target.value })}
-//             />
-//           </label>
-//         ))}
-//       </div>
-//       <button className="primary full" type="submit">Save Changes</button>
-//     </form>
-//   );
-// }
-
 // function ConfirmDelete({ name, onCancel, onConfirm }) {
 //   return (
 //     <div className="confirm-delete">
@@ -272,29 +225,47 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus, Eye, Pencil, Trash2 } from "lucide-react";
 import { useData } from "../../../context/DataContext.jsx";
+import { deleteStaffMember } from "../../../lib/api.js";
 import "./Staff.css";
 
 // Mongo documents come back with `_id`, not `id`. Centralize the lookup so
 // every place that needs "this staff member's identifier" agrees.
 const staffId = (staff) => staff?._id || staff?.id;
 
+// Your backend stores the display name as `fullName`, not `name`. Fall back
+// gracefully in case some records still have `name` from older test data.
+const staffName = (staff) => staff?.fullName || staff?.name || "this staff member";
+
 function Staff() {
   const nav = useNavigate();
   const { data, setData } = useData();
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const filteredStaff = data.staff.filter((staff) => {
-    const value = `${staff.name} ${staff.email} ${staff.role} ${staffId(staff)}`;
+    const value = `${staffName(staff)} ${staff.email} ${staff.role} ${staffId(staff)}`;
     return value.toLowerCase().includes(search.toLowerCase());
   });
 
-  const removeStaff = (id) => {
-    setData({
-      ...data,
-      staff: data.staff.filter((staff) => staffId(staff) !== id),
-    });
-    setModal(null);
+  const removeStaff = async (id) => {
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteStaffMember(id);
+
+      // Only remove from local state once the server confirms the delete.
+      setData({
+        ...data,
+        staff: data.staff.filter((staff) => staffId(staff) !== id),
+      });
+      setModal(null);
+    } catch (err) {
+      setDeleteError(err.message || "Failed to delete staff member.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -333,7 +304,7 @@ function Staff() {
                 <div className="staff-card-top">
                   <span className="staff-initial">{staff.initials}</span>
                   <div className="staff-name">
-                    <b>{staff.name}</b>
+                    <b>{staffName(staff)}</b>
                     <small>{staff.role} · {id}</small>
                   </div>
                   <Status status={staff.status} />
@@ -364,7 +335,10 @@ function Staff() {
 
                   <button
                     className="danger-btn small"
-                    onClick={() => setModal({ type: "delete", item: staff })}
+                    onClick={() => {
+                      setDeleteError("");
+                      setModal({ type: "delete", item: staff });
+                    }}
                   >
                     <Trash2 size={13} />
                   </button>
@@ -390,14 +364,23 @@ function Staff() {
               ? "Edit Staff"
               : "Staff Profile"
           }
-          onClose={() => setModal(null)}
+          onClose={() => {
+            if (deleting) return; // don't let them close mid-request
+            setModal(null);
+            setDeleteError("");
+          }}
         >
           {modal.type === "view" && <StaffDetail staff={modal.item} />}
 
           {modal.type === "delete" && (
             <ConfirmDelete
-              name={modal.item.name}
-              onCancel={() => setModal(null)}
+              name={staffName(modal.item)}
+              deleting={deleting}
+              error={deleteError}
+              onCancel={() => {
+                setModal(null);
+                setDeleteError("");
+              }}
               onConfirm={() => removeStaff(staffId(modal.item))}
             />
           )}
@@ -409,7 +392,7 @@ function Staff() {
 
 function Status({ status }) {
   return (
-    <span className={`status ${status.toLowerCase()}`}>
+    <span className={`status ${(status || "").toLowerCase()}`}>
       <i />
       {status}
     </span>
@@ -422,7 +405,7 @@ function StaffDetail({ staff }) {
       <div className="staff-detail-hero">
         <span className="large-initial">{staff.initials}</span>
         <div>
-          <h2>{staff.name}</h2>
+          <h2>{staffName(staff)}</h2>
           <p>{staff.role} · {staffId(staff)}</p>
           <Status status={staff.status} />
         </div>
@@ -447,15 +430,22 @@ function Info({ label, value }) {
   );
 }
 
-function ConfirmDelete({ name, onCancel, onConfirm }) {
+function ConfirmDelete({ name, onCancel, onConfirm, deleting, error }) {
   return (
     <div className="confirm-delete">
       <div className="delete-icon"><Trash2 /></div>
-      <h3>Delete this record?</h3>
+      <h3>Delete this staff member?</h3>
       <p>You are about to permanently delete <b>{name}</b>. This action cannot be undone.</p>
+      {error && (
+        <p className="upload-confirm" style={{ color: "#b91c1c" }}>{error}</p>
+      )}
       <div className="confirm-actions">
-        <button className="outline" onClick={onCancel}>Cancel</button>
-        <button className="danger-solid" onClick={onConfirm}>Delete</button>
+        <button className="outline" onClick={onCancel} disabled={deleting}>
+          Cancel
+        </button>
+        <button className="danger-primary" onClick={onConfirm} disabled={deleting}>
+          {deleting ? "Deleting…" : "Delete"}
+        </button>
       </div>
     </div>
   );

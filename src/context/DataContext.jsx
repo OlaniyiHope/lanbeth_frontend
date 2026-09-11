@@ -360,6 +360,18 @@ const getAllReports = async () => {
 const response = await apiRequest("/report/my-report", token);
   return response?.reports || [];
 };
+// const submitReport = async (clientId, payload) => {
+//   const token = getToken();
+
+//   const response = await apiRequest(`/clients/${clientId}/reports`, token, {
+//     method: "POST",
+//     body: JSON.stringify(payload),
+//   });
+
+//   return response?.report || response;
+// };
+
+
 const submitReport = async (clientId, payload) => {
   const token = getToken();
 
@@ -368,9 +380,13 @@ const submitReport = async (clientId, payload) => {
     body: JSON.stringify(payload),
   });
 
-  return response?.report || response;
-};
+  const report = response?.report || response;
 
+  // Refresh reports so "My Reports" reflects the new submission immediately.
+  await loadLiveData();
+
+  return report;
+};
 const getReportsForClient = async (clientId, filters = {}) => {
   const token = getToken();
 

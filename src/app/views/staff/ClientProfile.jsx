@@ -1240,104 +1240,284 @@ function AllergiesTab({ client }) {
 ===================================================== */
 
 function DocumentsTab({ client }) {
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const documents =
-    client.documents || [];
+  const clientId = client?._id || client?.clientId;
 
+  const API_BASE_URL = (
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:5001"
+  ).replace(/\/$/, "");
+
+  const loadDocuments = async () => {
+    const token = localStorage.getItem("lanbeth-auth-token");
+
+    if (!clientId || !token) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/clients/${clientId}/documents`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result?.message ||
+            result?.error ||
+            "Failed to load client documents."
+        );
+      }
+
+      console.log("STAFF CLIENT DOCUMENTS:", result);
+
+      const loadedDocuments = Array.isArray(result)
+        ? result
+        : Array.isArray(result?.documents)
+        ? result.documents
+        : Array.isArray(result?.data)
+        ? result.data
+        : [];
+
+      setDocuments(loadedDocuments);
+    } catch (err) {
+      console.error("Load staff client documents error:", err);
+      setError(
+        err.message || "Unable to load client documents."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDocuments();
+  }, [clientId]);
+
+  const formatDocumentDate = (value) => {
+    if (!value) return "—";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return String(value);
+    }
+
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+  };
 
   return (
-
     <div className="info-panel">
 
+      {/* HEADER */}
       <div className="info-panel-section">
 
-        <h3>
-          Client Documents
-        </h3>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
 
+          <div>
+            <h3>Client Documents</h3>
 
-        {
-          documents.length === 0 ? (
+            <p
+              style={{
+                margin: "5px 0 0",
+                opacity: 0.65,
+                fontSize: "13px",
+              }}
+            >
+              Documents uploaded for this client.
+            </p>
+          </div>
 
-            <EmptyState
-              icon={<FolderOpen size={20} />}
-              title="No documents uploaded"
-              desc="Care plans, identity documents, and other client files will appear here."
-            />
+          {!loading && (
+            <span className="medication-badge">
+              {documents.length}{" "}
+              {documents.length === 1
+                ? "document"
+                : "documents"}
+            </span>
+          )}
 
-          ) : (
-
-            <div className="doc-list">
-
-              {
-                documents.map(
-                  (doc, index) => (
-
-                    <div
-                      className="doc-row"
-                      key={
-                        doc.id ||
-                        index
-                      }
-                    >
-
-                      <span className="doc-icon">
-
-                        <FileText size={15} />
-
-                      </span>
-
-
-                      <div className="doc-details">
-
-                        <b>
-                          {doc.name}
-                        </b>
-
-                        {
-                          doc.type && (
-
-                            <small>
-                              {doc.type}
-                            </small>
-
-                          )
-                        }
-
-                      </div>
-
-
-                      {
-                        doc.url && (
-
-                          <a
-                            href={doc.url}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            View
-                          </a>
-
-                        )
-                      }
-
-                    </div>
-
-                  )
-                )
-              }
-
-            </div>
-
-          )
-        }
+        </div>
 
       </div>
 
+
+      {/* ERROR */}
+      {error && (
+        <div className="assign-staff-error">
+          {error}
+        </div>
+      )}
+
+
+      {/* LOADING */}
+      {loading ? (
+
+        <div className="coming-soon">
+
+          <span className="coming-soon-icon">
+            <FolderOpen size={20} />
+          </span>
+
+          <h3>
+            Loading documents...
+          </h3>
+
+          <p>
+            Please wait while the client's
+            documents are loaded.
+          </p>
+
+        </div>
+
+      ) : documents.length === 0 ? (
+
+        /* EMPTY */
+        <EmptyState
+          icon={<FolderOpen size={20} />}
+          title="No documents uploaded"
+          desc="Care plans, identity documents, medical records, and other client files will appear here."
+        />
+
+      ) : (
+
+        /* DOCUMENT LIST */
+        <div className="info-panel-section">
+
+          <div className="doc-list">
+
+            {documents.map((doc, index) => {
+
+              const documentId =
+                doc._id ||
+                doc.id ||
+                `document-${index}`;
+
+              const fileName =
+                doc.fileName ||
+                doc.name ||
+                doc.originalName ||
+                "Client document";
+
+              const documentType =
+                doc.documentType ||
+                doc.type ||
+                "";
+
+              const fileUrl =
+                doc.fileUrl ||
+                doc.url ||
+                "";
+
+              return (
+
+                <div
+                  className="doc-row"
+                  key={documentId}
+                >
+
+                  {/* ICON */}
+                  <span className="doc-icon">
+                    <FileText size={17} />
+                  </span>
+
+
+                  {/* DETAILS */}
+                  <div
+                    className="doc-details"
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
+
+                    <b>
+                      {fileName}
+                    </b>
+
+                    {documentType && (
+                      <small>
+                        {documentType}
+                      </small>
+                    )}
+
+                    {doc.uploadedAt && (
+                      <small>
+                        Uploaded{" "}
+                        {formatDocumentDate(
+                          doc.uploadedAt
+                        )}
+                      </small>
+                    )}
+
+                  </div>
+
+
+                  {/* VIEW */}
+                  {fileUrl ? (
+
+                    <a
+                      href={fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="primary-light"
+                    >
+                      <Download size={13} />
+                      View
+                    </a>
+
+                  ) : (
+
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        opacity: 0.55,
+                      }}
+                    >
+                      File unavailable
+                    </span>
+
+                  )}
+
+                </div>
+
+              );
+            })}
+
+          </div>
+
+        </div>
+
+      )}
+
     </div>
-
   );
-
 }
 
 

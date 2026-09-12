@@ -88,7 +88,8 @@ export function DataProvider({ children }) {
       ...localData,
       clients: [],
       staff: [],
-        reports: [],
+    reports: [],
+  reportCount: 0,
     };
   });
 
@@ -260,17 +261,21 @@ const loadLiveData = async () => {
     }
 
     // const reportsResponse = await apiRequest("/reports", token);
-const reportsResponse = await apiRequest("/report/my-report", token);
-    const reports = extractArray(reportsResponse, [
-      "reports",
-      "results",
-    ]);
+const reportCountResponse = await apiRequest(
+  "/reports/count",
+  token
+);
+console.log("REPORT COUNT RESPONSE:", reportCountResponse);
 
+const reportCount = Number(
+  reportCountResponse?.total || 0
+);
+console.log("REPORT COUNT:", reportCount);
     setDataState((previous) => ({
       ...previous,
       clients,
       staff,
-      reports,
+  reportCount,
     }));
   } catch (err) {
     console.error("Failed to load dashboard data:", err);

@@ -517,9 +517,9 @@ function Dashboard() {
     ? data.staff
     : [];
 
-  const reports = Array.isArray(data?.reports)
-    ? data.reports
-    : [];
+  // const reports = Array.isArray(data?.reports)
+  //   ? data.reports
+  //   : [];
 
   const activeClients = clients.filter(
     (client) =>
@@ -857,7 +857,7 @@ const loadExpiryDocuments = async () => {
         />
 
 
-        <Stat
+        {/* <Stat
           icon={<FileText />}
           label="Reports Submitted"
           value={
@@ -870,8 +870,21 @@ const loadExpiryDocuments = async () => {
               ? "Loading..."
               : "Total submitted reports"
           }
-        />
-
+        /> */}
+<Stat
+  icon={<FileText />}
+  label="Reports Submitted"
+  value={
+    loading
+      ? "—"
+      : data?.reportCount ?? 0
+  }
+  trend={
+    loading
+      ? "Loading..."
+      : "Total submitted reports"
+  }
+/>
 
         {/* =========================
             DYNAMIC EXPIRY DOCUMENTS

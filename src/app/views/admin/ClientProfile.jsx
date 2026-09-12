@@ -661,26 +661,393 @@ function AllergiesTab({ client }) {
 }
 
 function DocumentsTab({ client }) {
-  const documents = client.documents || [];
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const [documentType, setDocumentType] = useState("");
+  const [file, setFile] = useState(null);
+
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const token = localStorage.getItem("lanbeth-auth-token");
+
+  const API_BASE_URL = (
+    import.meta.env.VITE_API_URL || "http://localhost:5001"
+  ).replace(/\/$/, "");
+
+  const clientId = client?._id;
+
+  const documentTypes = [
+    "Care Plan",
+    "Identity Document",
+    "Medical Record",
+    "Medication Record",
+    "Assessment",
+    "Support Plan",
+    "Consent Form",
+    "Risk Assessment",
+    "Training Record",
+    "Other",
+  ];
+
+  const loadDocuments = async () => {
+    if (!clientId || !token) return;
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/clients/${clientId}/documents`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result?.message ||
+            result?.error ||
+            "Failed to load client documents."
+        );
+      }
+
+      setDocuments(result.documents || []);
+    } catch (err) {
+      console.error("Load client documents error:", err);
+      setError(err.message || "Unable to load documents.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDocuments();
+  }, [clientId]);
+
+  const handleUpload = async (e) => {
+    e.preventDefault();
+
+    setError("");
+    setSuccess("");
+
+    if (!documentType) {
+      setError("Please select a document type.");
+      return;
+    }
+
+    if (!file) {
+      setError("Please select a PDF document.");
+      return;
+    }
+
+    if (file.type !== "application/pdf") {
+      setError("Only PDF documents are allowed.");
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      const formData = new FormData();
+
+      formData.append("documentType", documentType);
+      formData.append("file", file);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/clients/${clientId}/documents`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result?.message ||
+            result?.error ||
+            "Failed to upload document."
+        );
+      }
+
+      setSuccess("Document uploaded successfully.");
+
+      setDocumentType("");
+      setFile(null);
+
+      const fileInput = document.getElementById(
+        "client-document-file"
+      );
+
+      if (fileInput) {
+        fileInput.value = "";
+      }
+
+      await loadDocuments();
+    } catch (err) {
+      console.error("Upload client document error:", err);
+      setError(err.message || "Unable to upload document.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (documentId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this document?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(documentId);
+      setError("");
+      setSuccess("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/clients/${clientId}/documents/${documentId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result?.message ||
+            result?.error ||
+            "Failed to delete document."
+        );
+      }
+
+      setSuccess("Document deleted successfully.");
+
+      await loadDocuments();
+    } catch (err) {
+      console.error("Delete client document error:", err);
+      setError(err.message || "Unable to delete document.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="info-panel">
+      {/* Upload */}
       <div className="info-panel-section">
-        <h3>Uploaded Documents</h3>
-        {documents.length === 0 ? (
+        <h3>Upload Client Document</h3>
+
+        <form
+          onSubmit={handleUpload}
+          className="client-document-upload-form"
+        >
+          <div className="info-grid">
+            <label className="document-form-field">
+              <span>Document Type</span>
+
+              <select
+                value={documentType}
+                onChange={(e) => {
+                  setDocumentType(e.target.value);
+                  setError("");
+                  setSuccess("");
+                }}
+                disabled={uploading}
+              >
+                <option value="">
+                  Select document type
+                </option>
+
+                {documentTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="document-form-field">
+              <span>PDF Document</span>
+
+              <input
+                id="client-document-file"
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={(e) => {
+                  setFile(e.target.files?.[0] || null);
+                  setError("");
+                  setSuccess("");
+                }}
+                disabled={uploading}
+              />
+            </label>
+          </div>
+
+          {file && (
+            <div className="selected-document-file">
+              <FileText size={15} />
+              <span>{file.name}</span>
+            </div>
+          )}
+
+          {error && (
+            <div className="assign-staff-error">
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="assign-staff-success">
+              {success}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="primary"
+            disabled={uploading || !documentType || !file}
+          >
+            <FolderOpen size={15} />
+
+            {uploading
+              ? "Uploading..."
+              : "Upload Document"}
+          </button>
+        </form>
+      </div>
+
+      {/* Documents */}
+      <div className="info-panel-section">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
+          <h3>Uploaded Documents</h3>
+
+          {!loading && (
+            <span className="medication-badge">
+              {documents.length}{" "}
+              {documents.length === 1
+                ? "document"
+                : "documents"}
+            </span>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="coming-soon">
+            <span className="coming-soon-icon">
+              <FolderOpen size={20} />
+            </span>
+
+            <h3>Loading documents...</h3>
+            <p>Please wait while the documents are loaded.</p>
+          </div>
+        ) : documents.length === 0 ? (
           <EmptyState
             icon={<FolderOpen size={20} />}
             title="No documents uploaded"
-            desc="Care plans, identity documents, and other files will appear here."
+            desc="Care plans, identity documents, medical records, and other client files will appear here."
           />
         ) : (
           <div className="doc-list">
-            {documents.map((doc, i) => (
-              <div className="doc-row" key={doc._id || i}>
+            {documents.map((doc) => (
+              <div
+                className="doc-row"
+                key={doc._id}
+              >
                 <FileText size={15} />
-                <span className="doc-name">{doc.fileName}</span>
-                <a href={doc.fileUrl} target="_blank" rel="noreferrer">
-                  View
-                </a>
+
+                <div
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
+                  <span className="doc-name">
+                    {doc.fileName}
+                  </span>
+
+                  {doc.documentType && (
+                    <small
+                      style={{
+                        display: "block",
+                        marginTop: "3px",
+                        opacity: 0.7,
+                      }}
+                    >
+                      {doc.documentType}
+                    </small>
+                  )}
+
+                  {doc.uploadedAt && (
+                    <small
+                      style={{
+                        display: "block",
+                        marginTop: "2px",
+                        opacity: 0.6,
+                      }}
+                    >
+                      Uploaded{" "}
+                      {formatDate(doc.uploadedAt)}
+                    </small>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  {doc.fileUrl && (
+                    <a
+                      href={doc.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="primary-light"
+                    >
+                      <Download size={13} />
+                      View
+                    </a>
+                  )}
+
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    title="Delete document"
+                    onClick={() =>
+                      handleDelete(doc._id)
+                    }
+                    disabled={
+                      deletingId === doc._id
+                    }
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

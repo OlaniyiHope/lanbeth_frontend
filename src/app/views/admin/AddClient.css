@@ -183,7 +183,26 @@
   color: var(--ac-muted);
   margin: 0 0 14px;
 }
-
+.upload-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 12px;
+  background: #fff;
+}
+.upload-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.upload-card-top .upload-name {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 /* Upload dropzone */
 .upload-drop {
   position: relative;
@@ -459,7 +478,16 @@
   border-color: #86c9a0 !important;
   cursor: not-allowed;
 }
-
+.activity-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.activity-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 999px;
+  background: #e8eef7; color: #2f4468; font-size: 13px;
+}
+.activity-chip button {
+  border: none; background: transparent; cursor: pointer;
+  font-size: 15px; line-height: 1; color: inherit; padding: 0;
+}
 .add-client-page .form-actions .outline {
   background: #ffffff !important;
   color: var(--ac-ink) !important;

@@ -11,6 +11,7 @@ import {
   FileText,
   Trash2,
   Camera,
+  ClipboardPlus,
   Pill,
   Stethoscope
 } from "lucide-react";
@@ -59,6 +60,33 @@ const RELIGIONS = [
   "Sikh",
   "Other religion",
   "Prefer not to say",
+];
+const DOCUMENT_TYPES = [
+  "Care Plan",
+  "Identity Document",
+  "Medication Record",
+  "Assessment",
+  "Support Plan",
+  "Consent Form",
+  "Risk Assessment",
+  "Training Record",
+  "Other",
+];
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+const formatDate = (iso) =>
+  iso ? new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "";
+const RECORD_TYPES = [
+  "Scan (MRI / CT / Ultrasound)",
+  "X-Ray",
+  "Blood Test",
+  "Urine / Stool Test",
+  "ECG",
+  "Hospital Discharge Report",
+  "Specialist Report",
+  "Care Assessment",
+  "Other",
 ];
 
 const ETHNICITIES = [
@@ -114,6 +142,24 @@ const UK_REGIONS = [
   "Northern Ireland",
 ];
 
+const ACTIVITIES = [
+  "Gardening",
+  "Walking",
+  "Reading",
+  "Listening to music",
+  "Watching TV / films",
+  "Cooking / baking",
+  "Arts and crafts",
+  "Puzzles / board games",
+  "Football",
+  "Singing / dancing",
+  "Praying / attending worship",
+  "Visiting family and friends",
+  "Shopping",
+  "Pet therapy",
+  "Other",
+];  
+
 const emptyClient = {
   name: "",
   email: "",
@@ -161,7 +207,40 @@ function AddClient() {
   const [medications, setMedications] = useState([]);
   const [meals, setMeals] = useState([]);
   const [photo, setPhoto] = useState("");
+const [records, setRecords] = useState([]);
+const [activities, setActivities] = useState([]);
+const [showOtherActivity, setShowOtherActivity] = useState(false);
+const [otherActivity, setOtherActivity] = useState("");
 
+const addActivity = (value) => {
+  if (!value) return;
+  if (value === "Other") {
+    setShowOtherActivity(true);
+    return;
+  }
+  setActivities((a) => (a.includes(value) ? a : [...a, value]));
+};
+
+const addOtherActivity = () => {
+  const value = otherActivity.trim();
+  if (!value) return;
+  setActivities((a) => (a.includes(value) ? a : [...a, value]));
+  setOtherActivity("");
+  setShowOtherActivity(false);
+};
+
+const removeActivity = (value) =>
+  setActivities((a) => a.filter((x) => x !== value));
+const addRecord = () =>
+  setRecords((r) => [
+    ...r,
+    { id: makeId(), type: "", dateOfAssessment: "", expiryDate: "", file: null },
+  ]);
+
+const updateRecord = (id, field, value) =>
+  setRecords((r) => r.map((rec) => (rec.id === id ? { ...rec, [field]: value } : rec)));
+
+const removeRecord = (id) => setRecords((r) => r.filter((rec) => rec.id !== id));
 const handlePhoto = async (file) => {
   if (!file) return;
   if (!file.type.startsWith("image/")) {
@@ -196,17 +275,23 @@ const updateProfessional = (type, field, value) => {
   };
 
   // ---------- Documents ----------
-  const handleFiles = (fileList) => {
-    const files = Array.from(fileList || []);
-    if (!files.length) return;
-    const next = files.map((file) => ({
-      id: makeId(),
-      name: file.name,
-      url: URL.createObjectURL(file),
-    }));
-    setDocuments((docs) => [...docs, ...next]);
-  };
+const handleFiles = (fileList) => {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+  const next = files.map((file) => ({
+    id: makeId(),
+    file,                                        // keep the real File for upload
+    name: file.name,
+    url: URL.createObjectURL(file),
+    title: file.name.replace(/\.[^/.]+$/, ""),   // default title = file name without extension
+    documentType: "Other",
+    uploadedAt: todayISO(),                      // date uploaded
+  }));
+  setDocuments((docs) => [...docs, ...next]);
+};
 
+const updateDocument = (id, field, value) =>
+  setDocuments((docs) => docs.map((d) => (d.id === id ? { ...d, [field]: value } : d)));
   const removeDocument = (id) => {
     setDocuments((docs) => {
       const target = docs.find((d) => d.id === id);
@@ -286,6 +371,22 @@ if (values.communicationPreference === "Other" && !values.otherLanguage.trim()) 
   setError("Please specify the client's language.");
   return;
 }
+for (const rec of records) {
+  if (!rec.type || !rec.dateOfAssessment || !rec.file) {
+    setError("Each medical record needs a type, a date of assessment and a file.");
+    return;
+  }
+  if (rec.expiryDate && rec.expiryDate < rec.dateOfAssessment) {
+    setError("A record's expiry date cannot be before its assessment date.");
+    return;
+  }
+}
+for (const doc of documents) {
+  if (!doc.title.trim()) {
+    setError(`Please give a title to "${doc.name}".`);
+    return;
+  }
+}
     setError("");
 
     const payload = {
@@ -308,7 +409,7 @@ communicationPreference:
     : values.communicationPreference,
       medicalHistory: values.medicalHistory,
       allergies: values.allergies,
-      favoriteActivities: values.favouriteActivities,
+      favoriteActivities: activities.join(", "),
       dailyCare: values.dailyCare,
       emergencyContact: {
         familyMemberName: values.familyMemberName,
@@ -336,15 +437,63 @@ communicationPreference:
         .map(({ id, ...rest }) => rest),
     };
 
+try {
+  setSubmitting(true);
+  const created = await createClient(payload);
+
+  const token = localStorage.getItem("lanbeth-auth-token");
+  const base = (import.meta.env.VITE_API_URL || "http://localhost:5001").replace(/\/$/, "");
+  const failed = [];
+
+  for (const rec of records) {
     try {
-      setSubmitting(true);
-      const created = await createClient(payload);
-      nav(`/admin/client-profile/${created.clientId}`);
-    } catch (err) {
-      setError(err.message || "Failed to create client.");
-    } finally {
-      setSubmitting(false);
+      const fd = new FormData();
+      fd.append("documentType", "Medical Record");
+      fd.append("title", rec.type);
+      fd.append("dateOfAssessment", rec.dateOfAssessment);
+      if (rec.expiryDate) fd.append("expiryDate", rec.expiryDate);
+      fd.append("file", rec.file);
+
+      const res = await fetch(`${base}/api/clients/${created._id}/documents`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      failed.push(rec.file.name);
     }
+  }
+for (const doc of documents) {
+  try {
+    const fd = new FormData();
+    fd.append("documentType", doc.documentType);
+    fd.append("title", doc.title.trim());
+    fd.append("uploadedAt", doc.uploadedAt);
+    fd.append("file", doc.file);
+
+    const res = await fetch(`${base}/api/clients/${created._id}/documents`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: fd,
+    });
+    if (!res.ok) throw new Error();
+  } catch {
+    failed.push(doc.name);
+  }
+}
+  if (failed.length) {
+    window.alert(
+      `The client was created, but these files failed to upload: ${failed.join(", ")}. ` +
+        `You can upload them from the client's Document tab.`
+    );
+  }
+  nav(`/admin/client-profile/${created.clientId}`);
+} catch (err) {
+  setError(err.message || "Failed to create client.");
+} finally {
+  setSubmitting(false);
+}
   };
 
   return (
@@ -644,7 +793,60 @@ communicationPreference:
             </Field>
           </div>
         </FormSection>
+<FormSection
+  icon={<ClipboardPlus size={16} />}
+  title="Medical Records"
+  desc="Upload scans, test results and assessments, with the date of assessment and the date each record expires."
+>
+  {records.length === 0 && (
+    <p className="section-empty">No medical records added yet.</p>
+  )}
 
+  {records.map((rec) => (
+    <div className="medication-row" key={rec.id}>
+      <div className="form-grid">
+        <Field label="Record Type" required>
+          <select value={rec.type} onChange={(e) => updateRecord(rec.id, "type", e.target.value)}>
+            <option value="">Select...</option>
+            {RECORD_TYPES.map((t) => (
+              <option key={t}>{t}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Date of Assessment" required>
+          <input
+            type="date"
+            value={rec.dateOfAssessment}
+            onChange={(e) => updateRecord(rec.id, "dateOfAssessment", e.target.value)}
+          />
+        </Field>
+        <Field label="Expiry Date" hint="Optional">
+          <input
+            type="date"
+            value={rec.expiryDate}
+            onChange={(e) => updateRecord(rec.id, "expiryDate", e.target.value)}
+          />
+        </Field>
+        <Field label="Record File" required>
+          <input
+            type="file"
+            accept="application/pdf,image/*"
+            onChange={(e) => updateRecord(rec.id, "file", e.target.files[0] || null)}
+          />
+        </Field>
+      </div>
+      <button type="button" className="medication-remove" onClick={() => removeRecord(rec.id)}>
+        <Trash2 size={13} />
+        Remove
+      </button>
+    </div>
+  ))}
+
+  <button type="button" className="outline small" onClick={addRecord}>
+    <Plus size={14} />
+    Add Medical Record
+  </button>
+</FormSection>
         <FormSection
           icon={<CalendarClock size={16} />}
           title="Daily Care & Nutrition"
@@ -725,16 +927,53 @@ communicationPreference:
             Add Meal Entry
           </button>
 
-          <div className="form-subhead" style={{ marginTop: 24 }}>Favourite Activities</div>
-          <div className="form-grid">
-            <Field label="Activities" wide>
-              <input
-                value={values.favouriteActivities}
-                onChange={(e) => update("favouriteActivities", e.target.value)}
-                placeholder="e.g. Football, gardening, listening to jazz music"
-              />
-            </Field>
-          </div>
+        <div className="form-subhead" style={{ marginTop: 24 }}>Favourite Activities</div>
+<div className="form-grid">
+  <Field label="Select Activities" wide hint="Choose as many as apply">
+    <select value="" onChange={(e) => addActivity(e.target.value)}>
+      <option value="">Select an activity...</option>
+      {ACTIVITIES.map((a) => (
+        <option key={a} value={a} disabled={activities.includes(a)}>
+          {a}
+        </option>
+      ))}
+    </select>
+  </Field>
+
+  {showOtherActivity && (
+    <Field label="Other Activity" wide>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          value={otherActivity}
+          onChange={(e) => setOtherActivity(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addOtherActivity();
+            }
+          }}
+          placeholder="e.g. Bird watching"
+        />
+        <button type="button" className="outline small" onClick={addOtherActivity}>
+          <Plus size={14} /> Add
+        </button>
+      </div>
+    </Field>
+  )}
+</div>
+
+{activities.length > 0 && (
+  <div className="activity-chips">
+    {activities.map((a) => (
+      <span className="activity-chip" key={a}>
+        {a}
+        <button type="button" onClick={() => removeActivity(a)} aria-label={`Remove ${a}`}>
+          ×
+        </button>
+      </span>
+    ))}
+  </div>
+)}
         </FormSection>
 
         <FormSection
@@ -750,32 +989,55 @@ communicationPreference:
             <input type="file" multiple onChange={(e) => handleFiles(e.target.files)} />
           </label>
 
-          {documents.length > 0 && (
-            <div className="upload-list">
-              {documents.map((doc) => (
-                <div className="upload-row" key={doc.id}>
-                  <FileText size={15} />
-                  <span className="upload-name">{doc.name}</span>
-                  <a href={doc.url} target="_blank" rel="noreferrer">
-                    View
-                  </a>
-                  <button
-                    type="button"
-                    className="upload-remove"
-                    onClick={() => removeDocument(doc.id)}
-                    aria-label={`Remove ${doc.name}`}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+       {documents.length > 0 && (
+  <div className="upload-list">
+    {documents.map((doc) => (
+      <div className="upload-card" key={doc.id}>
+        <div className="upload-card-top">
+          <FileText size={15} />
+          <span className="upload-name">{doc.name}</span>
+          <a href={doc.url} target="_blank" rel="noreferrer">View</a>
+          <button
+            type="button"
+            className="upload-remove"
+            onClick={() => removeDocument(doc.id)}
+            aria-label={`Remove ${doc.name}`}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+
+        <div className="form-grid">
+          <Field label="Document Title" required>
+            <input
+              value={doc.title}
+              onChange={(e) => updateDocument(doc.id, "title", e.target.value)}
+              placeholder="e.g. Care Plan 2025"
+            />
+          </Field>
+          <Field label="Document Type">
+            <select
+              value={doc.documentType}
+              onChange={(e) => updateDocument(doc.id, "documentType", e.target.value)}
+            >
+              {DOCUMENT_TYPES.map((t) => (
+                <option key={t}>{t}</option>
               ))}
-            </div>
-          )}
+            </select>
+          </Field>
+          <Field label="Date Uploaded">
+            <input value={formatDate(doc.uploadedAt)} readOnly disabled />
+          </Field>
+        </div>
+      </div>
+    ))}
+  </div>
+)}
         </FormSection>
 
         <FormSection
           icon={<Pill size={16} />}
-          title="Medication Schedule"
+          title="Current Medication & Schedule"
           desc="Optional — add any medications this client currently takes. All fields are required per entry."
         >
           {medications.length === 0 && <p className="section-empty">No medications added yet.</p>}

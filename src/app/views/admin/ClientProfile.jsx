@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   UserPlus,
   Search,
+  Stethoscope
 } from "lucide-react";
 import { useData } from "../../../context/DataContext.jsx";
 import "./ClientProfile.css";
@@ -38,6 +39,7 @@ const TABS = [
   { key: "allergies", label: "Allergies", icon: ShieldAlert },
   { key: "documents", label: "Document", icon: FolderOpen },
   { key: "family", label: "Family & Emergency Contact", icon: Users },
+  { key: "professionals", label: "Professionals", icon: Stethoscope },
   { key: "reports", label: "View Report", icon: ClipboardList },
 ];
 
@@ -259,6 +261,7 @@ function ClientProfile() {
         {activeTab === "allergies" && <AllergiesTab client={client} />}
         {activeTab === "documents" && <DocumentsTab client={client} />}
         {activeTab === "family" && <FamilyTab client={client} />}
+        {activeTab === "professionals" && <ProfessionalsTab client={client} />}
         {activeTab === "reports" && <ReportsTab client={client} />}
       </div>
 
@@ -741,7 +744,9 @@ function DocumentsTab({ client }) {
 
   const [documentType, setDocumentType] = useState("");
   const [file, setFile] = useState(null);
-
+const [title, setTitle] = useState("");
+const [assessmentDate, setAssessmentDate] = useState("");
+const [expiryDate, setExpiryDate] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -817,15 +822,27 @@ function DocumentsTab({ client }) {
       return;
     }
 
-    if (!file) {
-      setError("Please select a PDF document.");
-      return;
-    }
-
-    if (file.type !== "application/pdf") {
-      setError("Only PDF documents are allowed.");
-      return;
-    }
+   if (!title.trim()) {
+  setError("Please enter a document title.");
+  return;
+}
+if (!assessmentDate) {
+  setError("Please enter the document date.");
+  return;
+}
+if (expiryDate && expiryDate < assessmentDate) {
+  setError("The expiry date cannot be before the document date.");
+  return;
+}
+if (!file) {
+  setError("Please select a file.");
+  return;
+}
+const allowed = file.type === "application/pdf" || file.type.startsWith("image/");
+if (!allowed) {
+  setError("Only PDF or image files are allowed.");
+  return;
+}
 
     try {
       setUploading(true);
@@ -833,6 +850,9 @@ function DocumentsTab({ client }) {
       const formData = new FormData();
 
       formData.append("documentType", documentType);
+      formData.append("title", title.trim());
+formData.append("dateOfAssessment", assessmentDate);
+if (expiryDate) formData.append("expiryDate", expiryDate);
       formData.append("file", file);
 
       const response = await fetch(
@@ -859,6 +879,9 @@ function DocumentsTab({ client }) {
       setSuccess("Document uploaded successfully.");
 
       setDocumentType("");
+      setTitle("");
+setAssessmentDate("");
+setExpiryDate("");
       setFile(null);
 
       const fileInput = document.getElementById(
@@ -933,7 +956,39 @@ function DocumentsTab({ client }) {
         >
           <div className="info-grid">
             <label className="document-form-field">
+  <span>
+    Document Title {documentType === "Other" ? "(specify the document)" : ""}
+  </span>
+  <input
+    value={title}
+    onChange={(e) => { setTitle(e.target.value); setError(""); }}
+    placeholder="e.g. MRI Scan, Blood Test, Care Plan 2026"
+    disabled={uploading}
+  />
+</label>
+
+<label className="document-form-field">
+  <span>Document / Assessment Date</span>
+  <input
+    type="date"
+    value={assessmentDate}
+    onChange={(e) => { setAssessmentDate(e.target.value); setError(""); }}
+    disabled={uploading}
+  />
+</label>
+
+<label className="document-form-field">
+  <span>Expiry Date (optional)</span>
+  <input
+    type="date"
+    value={expiryDate}
+    onChange={(e) => setExpiryDate(e.target.value)}
+    disabled={uploading}
+  />
+</label>
+            <label className="document-form-field">
               <span>Document Type</span>
+              
 
               <select
                 value={documentType}
@@ -962,7 +1017,7 @@ function DocumentsTab({ client }) {
               <input
                 id="client-document-file"
                 type="file"
-                accept="application/pdf,.pdf"
+               accept="application/pdf,image/*"
                 onChange={(e) => {
                   setFile(e.target.files?.[0] || null);
                   setError("");
@@ -995,7 +1050,7 @@ function DocumentsTab({ client }) {
           <button
             type="submit"
             className="primary"
-            disabled={uploading || !documentType || !file}
+          disabled={uploading || !documentType || !title.trim() || !assessmentDate || !file}
           >
             <FolderOpen size={15} />
 
@@ -1061,19 +1116,29 @@ function DocumentsTab({ client }) {
                   <span className="doc-name">
                     {doc.fileName}
                   </span>
-
-                  {doc.documentType && (
-                    <small
-                      style={{
-                        display: "block",
-                        marginTop: "3px",
-                        opacity: 0.7,
-                      }}
-                    >
-                      {doc.documentType}
-                    </small>
-                  )}
-
+{(doc.title || doc.documentType) && (
+  <small style={{ display: "block", marginTop: "3px", opacity: 0.8 }}>
+    {doc.title ? `${doc.title} · ` : ""}{doc.documentType}
+  </small>
+)}
+{doc.dateOfAssessment && (
+  <small style={{ display: "block", marginTop: "2px", opacity: 0.7 }}>
+    Assessed: {formatDate(doc.dateOfAssessment)}
+  </small>
+)}
+{doc.expiryDate && (
+  <small
+    style={{
+      display: "block",
+      marginTop: "2px",
+      opacity: 0.8,
+      color: new Date(doc.expiryDate) < new Date() ? "#c0392b" : "inherit",
+    }}
+  >
+    {new Date(doc.expiryDate) < new Date() ? "Expired: " : "Expires: "}
+    {formatDate(doc.expiryDate)}
+  </small>
+)}
                   {doc.uploadedAt && (
                     <small
                       style={{
@@ -1129,7 +1194,41 @@ function DocumentsTab({ client }) {
     </div>
   );
 }
-
+function ProfessionalsTab({ client }) {
+  const professionals = client.professionals || [];
+  return (
+    <div className="info-panel">
+      {professionals.length === 0 ? (
+        <div className="info-panel-section">
+          <EmptyState
+            icon={<Stethoscope size={20} />}
+            title="No professionals recorded"
+            desc="Dentist, GP, social worker and other professionals will appear here."
+          />
+        </div>
+      ) : (
+        professionals.map((pro, i) => (
+          <div className="info-panel-section" key={pro._id || i}>
+            <h3>{pro.role}</h3>
+            <div className="info-grid">
+              <Info label="Name" value={pro.name} />
+              <Info icon={<Phone size={13} />} label="Phone" value={pro.phone} />
+              <Info icon={<Mail size={13} />} label="Email" value={pro.email} />
+              <Info label="Post Code" value={pro.postCode} />
+              <Info icon={<MapPin size={13} />} label="Address" value={pro.address} wide />
+              {pro.surgeryAddress && (
+                <Info label="Surgery Address" value={pro.surgeryAddress} wide />
+              )}
+              {pro.registeredDate && (
+                <Info label="Registered Date" value={formatDate(pro.registeredDate)} />
+              )}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
 function FamilyTab({ client }) {
   const contact = client.emergencyContact || {};
   const hasContact = contact.familyMemberName || contact.nextOfKinName || contact.nextOfKinPhone;

@@ -10,7 +10,15 @@
   max-width: 880px;
   margin: 0 auto;
 }
-
+.photo-upload { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.photo-circle {
+  width: 84px; height: 84px; border-radius: 50%; overflow: hidden;
+  background: #e8eef7; display: flex; align-items: center; justify-content: center;
+  font-weight: 600; color: #4b5d7a;
+}
+.photo-circle img { width: 100%; height: 100%; object-fit: cover; }
+.photo-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.photo-btn { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .add-staff-page .page-head {
   display: flex;
   align-items: flex-start;

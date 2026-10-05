@@ -176,9 +176,13 @@ function ClientProfile() {
 
       <div className="client-hero">
         <div className="client-hero-main">
-          <span className="client-hero-avatar">
-            {client.initials || getInitials(client.fullName)}
-          </span>
+      <span className="client-avatar">
+  {client.profilePhoto ? (
+    <img src={client.profilePhoto} alt={client.fullName || client.name} />
+  ) : (
+    client.initials || getInitials(client.fullName || client.name)
+  )}
+</span>
           <div className="client-hero-id">
             <h2>{client.fullName}</h2>
             <span className="client-hero-code">Client ID: {client.clientId}</span>
@@ -424,6 +428,8 @@ function AssignStaffSection({
                   <span className="assigned-staff-avatar">
                     {getInitials(member.fullName || member.name || member.username || "Staff")}
                   </span>
+
+                  
                   <div>
                     <strong>{member.fullName || member.name || member.username}</strong>
                     <small>{member.jobTitle || member.role || "Staff"}</small>

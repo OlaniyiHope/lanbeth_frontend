@@ -10,7 +10,9 @@ import {
   UploadCloud,
   FileText,
   Trash2,
+  Camera,
   Pill,
+  Stethoscope
 } from "lucide-react";
 import { useData } from "../../../context/DataContext.jsx";
 import "./AddClient.css";
@@ -25,7 +27,28 @@ const WEEKDAYS = [
   "Saturday",
   "Sunday",
 ];
-
+const LANGUAGES = [
+  "English",
+  "Welsh",
+  "Polish",
+  "Punjabi",
+  "Urdu",
+  "Bengali",
+  "Gujarati",
+  "Hindi",
+  "Arabic",
+  "French",
+  "Portuguese",
+  "Spanish",
+  "Yoruba",
+  "Igbo",
+  "Twi",
+  "Somali",
+  "Chinese (Mandarin)",
+  "Chinese (Cantonese)",
+  "British Sign Language (BSL)",
+  "Other",
+];
 const RELIGIONS = [
   "No religion",
   "Christian",
@@ -52,7 +75,30 @@ const ETHNICITIES = [
   "Other ethnic group",
   "Prefer not to say",
 ];
+const PROFESSIONAL_TYPES = [
+  "Dentist",
+  "Social Worker",
+  "GP",
+  "Pharmacy",
+  "Optician",
+  "Health Care Assessment",
+  "Placing Local Authority",
+  "College / University",
+  "Training / College / Personal Tutor",
+];
 
+// Only these get "Surgery Address" and "Registered Date"
+const REGISTERED_TYPES = ["Dentist", "GP", "Pharmacy", "Optician"];
+
+const emptyProfessional = {
+  name: "",
+  phone: "",
+  email: "",
+  address: "",
+  postCode: "",
+  surgeryAddress: "",
+  registeredDate: "",
+};
 const UK_REGIONS = [
   "North East England",
   "North West England",
@@ -82,6 +128,7 @@ const emptyClient = {
   ethnicity: "",
   sex: "",
   communicationPreference: "",
+  otherLanguage: "",
   familyMemberName: "",
   relationship: "",
   nextOfKinName: "",
@@ -113,6 +160,30 @@ function AddClient() {
   const [documents, setDocuments] = useState([]);
   const [medications, setMedications] = useState([]);
   const [meals, setMeals] = useState([]);
+  const [photo, setPhoto] = useState("");
+
+const handlePhoto = async (file) => {
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    setError("Please choose an image file (JPG or PNG).");
+    return;
+  }
+  try {
+    setPhoto(await resizeImage(file));
+    setError("");
+  } catch {
+    setError("Could not read that image. Try another one.");
+  }
+};
+  const [professionals, setProfessionals] = useState(() =>
+  Object.fromEntries(
+    PROFESSIONAL_TYPES.map((t) => [t, { ...emptyProfessional }])
+  )
+);
+
+const updateProfessional = (type, field, value) => {
+  setProfessionals((p) => ({ ...p, [type]: { ...p[type], [field]: value } }));
+};
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -177,7 +248,26 @@ function AddClient() {
   const removeMeal = (id) => {
     setMeals((m) => m.filter((meal) => meal.id !== id));
   };
-
+function resizeImage(file, max = 256) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
   const submit = async (e) => {
     e.preventDefault();
     if (!values.name.trim() || !values.email.trim() || !values.phone.trim()) {
@@ -188,6 +278,14 @@ function AddClient() {
       setError("Next of kin name and phone number are required.");
       return;
     }
+    if (!values.communicationPreference) {
+  setError("Language preference is required.");
+  return;
+}
+if (values.communicationPreference === "Other" && !values.otherLanguage.trim()) {
+  setError("Please specify the client's language.");
+  return;
+}
     setError("");
 
     const payload = {
@@ -200,10 +298,14 @@ function AddClient() {
       postCode: values.postCode,
       region: values.region,
       maritalStatus: values.maritalStatus,
+      profilePhoto: photo || undefined,
       religion: values.religion,
       ethnicity: values.ethnicity || undefined,
       gender: values.sex === "Other" ? undefined : values.sex,
-      communicationPreference: values.communicationPreference,
+communicationPreference:
+  values.communicationPreference === "Other"
+    ? values.otherLanguage
+    : values.communicationPreference,
       medicalHistory: values.medicalHistory,
       allergies: values.allergies,
       favoriteActivities: values.favouriteActivities,
@@ -214,6 +316,13 @@ function AddClient() {
         nextOfKinName: values.nextOfKinName,
         nextOfKinPhone: values.nextOfKinPhone,
       },
+      professionals: PROFESSIONAL_TYPES
+  .filter((t) => professionals[t].name.trim())
+  .map((t) => ({
+    role: t,
+    ...professionals[t],
+    registeredDate: professionals[t].registeredDate || undefined,
+  })),
       foodIntake: meals
         .filter((m) => m.type)
         .map(({ id, type, description, time, day }) => ({
@@ -252,12 +361,42 @@ function AddClient() {
       </div>
 
       <form className="client-form" onSubmit={submit}>
+
+        
         <FormSection
           icon={<User size={16} />}
           title="Personal Information"
           desc="Core identity and contact details for this client."
         >
+          <div className="photo-upload">
+  <div className="photo-circle">
+    {photo ? (
+      <img src={photo} alt="Client preview" />
+    ) : (
+      <span>{getInitials(values.name) || <Camera size={22} />}</span>
+    )}
+  </div>
+  <div className="photo-actions">
+    <label className="outline small photo-btn">
+      <Camera size={14} />
+      {photo ? "Change Photo" : "Upload Photo"}
+      <input
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => handlePhoto(e.target.files[0])}
+      />
+    </label>
+    {photo && (
+      <button type="button" className="medication-remove" onClick={() => setPhoto("")}>
+        <Trash2 size={13} /> Remove
+      </button>
+    )}
+    <small className="field-hint">JPG or PNG. It is resized automatically.</small>
+  </div>
+</div>
           <div className="form-grid">
+            
             <Field label="Full Name" required>
               <input
                 value={values.name}
@@ -352,13 +491,29 @@ function AddClient() {
                 ))}
               </select>
             </Field>
-            <Field label="Communication Preference" wide>
-              <input
-                value={values.communicationPreference}
-                onChange={(e) => update("communicationPreference", e.target.value)}
-                placeholder="e.g. Speaks slowly, hard of hearing in left ear"
-              />
-            </Field>
+       <Field label="Language Preference" required>
+  <select
+    value={values.communicationPreference}
+    onChange={(e) => update("communicationPreference", e.target.value)}
+  >
+    <option value="">Select...</option>
+    {LANGUAGES.map((lang) => (
+      <option key={lang} value={lang}>
+        {lang}
+      </option>
+    ))}
+  </select>
+</Field>
+
+{values.communicationPreference === "Other" && (
+  <Field label="Specify Language" required>
+    <input
+      value={values.otherLanguage}
+      onChange={(e) => update("otherLanguage", e.target.value)}
+      placeholder="e.g. Tamil"
+    />
+  </Field>
+)}
           </div>
         </FormSection>
 
@@ -396,7 +551,76 @@ function AddClient() {
             </Field>
           </div>
         </FormSection>
-
+<FormSection
+  icon={<Stethoscope size={16} />}
+  title="Professionals Around the Individual"
+  desc="Details of the professionals involved in this client's care. Leave blank any that don't apply."
+>
+  {PROFESSIONAL_TYPES.map((type) => {
+    const pro = professionals[type];
+    const hasRegistration = REGISTERED_TYPES.includes(type);
+    return (
+      <div key={type} style={{ marginBottom: 24 }}>
+        <div className="form-subhead">{type}</div>
+        <div className="form-grid">
+          <Field label="Name">
+            <input
+              value={pro.name}
+              onChange={(e) => updateProfessional(type, "name", e.target.value)}
+              placeholder={`${type} name`}
+            />
+          </Field>
+          <Field label="Phone">
+            <input
+              value={pro.phone}
+              onChange={(e) => updateProfessional(type, "phone", e.target.value)}
+            />
+          </Field>
+          <Field label="Email">
+            <input
+              type="email"
+              value={pro.email}
+              onChange={(e) => updateProfessional(type, "email", e.target.value)}
+            />
+          </Field>
+          <Field label="Post Code">
+            <input
+              value={pro.postCode}
+              onChange={(e) => updateProfessional(type, "postCode", e.target.value)}
+            />
+          </Field>
+          <Field label="Address" wide>
+            <input
+              value={pro.address}
+              onChange={(e) => updateProfessional(type, "address", e.target.value)}
+            />
+          </Field>
+          {hasRegistration && (
+            <>
+              <Field label="Surgery Address" wide>
+                <input
+                  value={pro.surgeryAddress}
+                  onChange={(e) =>
+                    updateProfessional(type, "surgeryAddress", e.target.value)
+                  }
+                />
+              </Field>
+              <Field label="Registered Date">
+                <input
+                  type="date"
+                  value={pro.registeredDate}
+                  onChange={(e) =>
+                    updateProfessional(type, "registeredDate", e.target.value)
+                  }
+                />
+              </Field>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  })}
+</FormSection>
         <FormSection
           icon={<HeartPulse size={16} />}
           title="Medical Information"

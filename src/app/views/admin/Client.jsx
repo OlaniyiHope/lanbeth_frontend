@@ -85,9 +85,13 @@ function Clients() {
           filteredClients.map((client) => (
         <div className="client-card" key={client.clientId || client._id}>
               <div className="client-card-top">
-                <span className="client-avatar">
-                  {client.initials || getInitials(client.name)}
-                </span>
+              <span className="client-avatar">
+  {client.profilePhoto ? (
+    <img src={client.profilePhoto} alt={client.fullName || client.name} />
+  ) : (
+    client.initials || getInitials(client.fullName || client.name)
+  )}
+</span>
                 <div className="client-name">
                   <b>{client.name}</b>
                 <small>{client.clientId}</small>
@@ -207,9 +211,13 @@ function ClientDetail({ client }) {
   return (
     <div className="client-detail">
       <div className="client-detail-hero">
-        <span className="large-avatar">
-          {client.initials || getInitials(client.name)}
-        </span>
+     <span className="client-avatar">
+  {client.profilePhoto ? (
+    <img src={client.profilePhoto} alt={client.fullName || client.name} />
+  ) : (
+    client.initials || getInitials(client.fullName || client.name)
+  )}
+</span>
         <div>
           <h2>{client.name}</h2>
           <p>{client.id}</p>

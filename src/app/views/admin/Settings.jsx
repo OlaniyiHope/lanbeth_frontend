@@ -207,7 +207,7 @@ export default function Settings({ title = "Profile" }) {
         </section>
       </div>
 
-      <div className="watermark">LAMBETH RESOLUTIONS</div>
+      <div className="watermark">LANBETH RESOLUTIONS</div>
     </div>
   );
 }

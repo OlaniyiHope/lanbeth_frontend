@@ -1010,7 +1010,7 @@ const submit = async (e) => {
               <input
                 value={values.address}
                 onChange={(e) => update("address", e.target.value)}
-                placeholder="e.g. 79 High Street, Lambeth, London"
+                placeholder="e.g. 79 High Street, Lanbeth, London"
               />
             </Field>
             <Field label="Postcode">

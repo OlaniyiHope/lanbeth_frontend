@@ -351,7 +351,7 @@ export default function MyProfile() {
 
 
       <div className="watermark">
-        LAMBETH RESOLUTION HOMECARE
+        LANBETH RESOLUTION HOMECARE
       </div>
 
     </div>

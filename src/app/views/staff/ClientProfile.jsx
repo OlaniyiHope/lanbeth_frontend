@@ -602,7 +602,7 @@ export default function ClientProfile() {
 
       <div className="watermark">
 
-        LAMBETH RESOLUTION HOMECARE
+        LANBETH RESOLUTION HOMECARE
 
       </div>
 

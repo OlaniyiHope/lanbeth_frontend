@@ -357,7 +357,7 @@ export default function MyClients() {
 
 
       <div className="watermark">
-        LAMBETH RESOLUTION HOMECARE
+        LANBETH RESOLUTION HOMECARE
       </div>
 
     </div>

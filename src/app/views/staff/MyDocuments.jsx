@@ -872,7 +872,7 @@ const fetchDocuments = useCallback(async () => {
       {/* WATERMARK */}
 
       <div className="watermark">
-        LAMBETH RESOLUTION HOMECARE
+        LANBETH RESOLUTION HOMECARE
       </div>
 
       {/* UPLOAD MODAL */}

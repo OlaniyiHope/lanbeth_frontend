@@ -128,3 +128,14 @@ export function deleteAdmin(id) {
     method: 'DELETE',
   });
 }
+export function getArchive(type) {
+  return request(`/api/archive?type=${type}`);
+}
+
+export function restoreArchived(type, id) {
+  return request(`/api/archive/${type}/${id}/restore`, { method: 'POST' });
+}
+
+export function deleteArchivedPermanently(type, id) {
+  return request(`/api/archive/${type}/${id}`, { method: 'DELETE' });
+}

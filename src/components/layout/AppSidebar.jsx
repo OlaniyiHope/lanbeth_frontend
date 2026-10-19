@@ -1,7 +1,7 @@
 import { useLocation, Link } from 'react-router-dom';
 import {
   ClipboardList, UserRound, Users, CalendarDays, FileText,
-  ShieldCheck, Activity, Check, Menu, Settings, LogOut, FolderOpen, UserPlus, UserCog
+  ShieldCheck, Activity, Check, Menu, Settings, LogOut, FolderOpen, UserPlus, UserCog, ArchiveIcon
 } from 'lucide-react';
 import Brand from '../Brand.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -12,6 +12,7 @@ function buildAdminNav() {
     ['/admin/add-admin', 'Add Admin', UserPlus],
     ['/admin/admins', 'Manage Admins', UserCog],
     ['/admin/staff', 'Staff Manage', UserRound],
+    ['/admin/archive', 'Archive', ArchiveIcon],
     ['/admin/clients', 'Manage Clients', Users],
     ['/admin/expiry-documents', 'Expiry document alert', CalendarDays],
     ['/admin/generate-report', 'Generate Report', FileText],

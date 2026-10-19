@@ -262,7 +262,7 @@ function Staff() {
       });
       setModal(null);
     } catch (err) {
-      setDeleteError(err.message || "Failed to delete staff member.");
+      setDeleteError(err.message || "Failed to archive staff member.");
     } finally {
       setDeleting(false);
     }
@@ -367,7 +367,7 @@ function Staff() {
         <Modal
           title={
             modal.type === "delete"
-              ? "Delete Staff"
+              ? "Archive Staff"
               : modal.type === "edit"
               ? "Edit Staff"
               : "Staff Profile"
@@ -442,8 +442,8 @@ function ConfirmDelete({ name, onCancel, onConfirm, deleting, error }) {
   return (
     <div className="confirm-delete">
       <div className="delete-icon"><Trash2 /></div>
-      <h3>Delete this staff member?</h3>
-      <p>You are about to permanently delete <b>{name}</b>. This action cannot be undone.</p>
+      <h3>Archive this staff member?</h3>
+      <p>You are about to permanently archive <b>{name}</b>. This action cannot be undone.</p>
       {error && (
         <p className="upload-confirm" style={{ color: "#b91c1c" }}>{error}</p>
       )}

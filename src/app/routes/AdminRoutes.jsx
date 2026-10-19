@@ -17,6 +17,7 @@ import EditClient from '../views/admin/EditClient.jsx';
 import EditStaff from '../views/admin/EditSttaff.jsx';
 import AddAdmin from '../views/admin/AddAdmin.jsx';
 import Admins from '../views/admin/Admins.jsx';
+import ArchivePage from '../views/admin/ArchivePage.jsx';
 
 export default function AdminRoutes() {
   return (
@@ -27,6 +28,7 @@ export default function AdminRoutes() {
     <Route path="client-profile/:id" element={<ClientProfile />} />
     <Route path="add-admin" element={<AddAdmin />} />
     <Route path="admins" element={<Admins />} />
+    <Route path="archive" element={<ArchivePage />} />
       <Route path="add-client" element={<AddClient />} />
       {/* <Route path="client-profile" element={<Clients />} /> */}
       <Route path="client-documents" element={<Document />} />

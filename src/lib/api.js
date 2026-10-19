@@ -112,3 +112,19 @@
     body: JSON.stringify(payload),
   });
 }
+export function getAdmins() {
+  return request('/api/auth/admins');
+}
+
+export function setAdminStatus(id, status) {
+  return request(`/api/auth/admins/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function deleteAdmin(id) {
+  return request(`/api/auth/admins/${id}`, {
+    method: 'DELETE',
+  });
+}

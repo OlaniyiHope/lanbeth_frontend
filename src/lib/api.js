@@ -106,3 +106,9 @@
       method: 'DELETE',
     });
   }
+  export function createAdmin(payload) {
+  return request('/api/auth/admins', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}

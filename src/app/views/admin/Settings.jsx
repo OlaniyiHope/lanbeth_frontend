@@ -1,21 +1,41 @@
 import { useEffect, useState } from "react";
-import { Mail, Phone, RefreshCw, Save, ShieldCheck, UserRound } from "lucide-react";
+import { Mail, Phone, RefreshCw, Save, ShieldCheck, UserRound,  Camera, Trash2  } from "lucide-react";
 import "./Settings.css";
+import { useAuth } from "../../../context/AuthContext";
 
 const API_BASE_URL =
   (import.meta.env.VITE_API_URL || "http://localhost:5001").replace(/\/$/, "") + "/api";
 
 const TOKEN_KEY = "lanbeth-auth-token";
 
-const emptyProfile = { name: "", email: "", phone: "", role: "" };
-
+const emptyProfile = { name: "", email: "", phone: "", role: "", profilePhoto: "" };
+function resizeImage(file, max = 256) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 export default function Settings({ title = "Profile" }) {
   const [profile, setProfile] = useState(emptyProfile);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-
+const { updateUser } = useAuth();
   const request = async (path, options = {}) => {
     const token = localStorage.getItem(TOKEN_KEY);
     if (!token) throw new Error("Authentication token not found.");
@@ -50,6 +70,7 @@ export default function Settings({ title = "Profile" }) {
         email: user.email || "",
         phone: user.phone || "",
         role: user.role || "",
+          profilePhoto: user.profilePhoto || "",
       });
     } catch (err) {
       setError(err.message || "Unable to load your profile.");
@@ -61,7 +82,16 @@ export default function Settings({ title = "Profile" }) {
   useEffect(() => {
     loadProfile();
   }, []);
-
+const handlePhoto = async (file) => {
+  if (!file) return;
+  try {
+    setMessage("");
+    const dataUrl = await resizeImage(file);
+    setProfile((prev) => ({ ...prev, profilePhoto: dataUrl }));
+  } catch {
+    setError("Could not read that image. Please try another file.");
+  }
+};
   const handleChange = (field) => (e) => {
     setMessage("");
     setProfile((prev) => ({ ...prev, [field]: e.target.value }));
@@ -79,8 +109,14 @@ export default function Settings({ title = "Profile" }) {
         body: JSON.stringify({
           name: profile.name,
           phone: profile.phone,
+            profilePhoto: profile.profilePhoto,
         }),
       });
+updateUser({
+  fullName: profile.name,
+  phone: profile.phone,
+  profilePhoto: profile.profilePhoto,
+});
 
       setMessage("Profile updated.");
     } catch (err) {
@@ -134,7 +170,35 @@ export default function Settings({ title = "Profile" }) {
 
       <div className="dashboard-grid">
         <section className="section-card profile-summary">
-          <div className="profile-avatar">{loading ? "…" : initials}</div>
+        <div className="profile-avatar">
+  {loading ? "…" : profile.profilePhoto ? (
+    <img src={profile.profilePhoto} alt={profile.name || "Profile"} />
+  ) : (
+    initials
+  )}
+</div>
+
+<div className="photo-actions" style={{ marginTop: 10 }}>
+  <label className="outline small photo-btn">
+    <Camera size={14} />
+    {profile.profilePhoto ? "Change Photo" : "Upload Photo"}
+    <input
+      type="file"
+      accept="image/*"
+      hidden
+      onChange={(e) => handlePhoto(e.target.files[0])}
+    />
+  </label>
+  {profile.profilePhoto && (
+    <button
+      type="button"
+      className="medication-remove"
+      onClick={() => setProfile((prev) => ({ ...prev, profilePhoto: "" }))}
+    >
+      <Trash2 size={13} /> Remove
+    </button>
+  )}
+</div>
           <h2>{loading ? "Loading..." : profile.name || "Unnamed user"}</h2>
 
           <ul className="profile-meta">

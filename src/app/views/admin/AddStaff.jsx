@@ -518,6 +518,7 @@ import {
   FileText,
   Trash2,
   Plus,
+  Camera
 } from "lucide-react";
 import { useData } from "../../../context/DataContext.jsx";
 import "./AddStaff.css";
@@ -653,7 +654,16 @@ function AddStaff() {
   const [docType, setDocType] = useState(DOC_TYPES[0]);
   const [docExpiry, setDocExpiry] = useState("");
   const [error, setError] = useState("");
+const [photo, setPhoto] = useState("");
 
+const handlePhoto = async (file) => {
+  if (!file) return;
+  try {
+    setPhoto(await resizeImage(file));
+  } catch {
+    setError("Could not read that image. Please try another file.");
+  }
+};
   const update = (field, value) => setValues((v) => ({ ...v, [field]: value }));
 
   const handleFile = (fileList) => {
@@ -790,7 +800,26 @@ const API_BASE_URL =
 //     );
 //   }
 // };
-
+function resizeImage(file, max = 256) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 const submit = async (e) => {
   e.preventDefault();
 
@@ -823,6 +852,7 @@ const submit = async (e) => {
       role: "staff",
 
       fullName: values.name.trim(),
+      profilePhoto: photo || undefined,
       username: values.username.trim(),
       email: values.email.trim(),
       password: values.password,
@@ -898,6 +928,33 @@ const submit = async (e) => {
           title="Staff Details"
           desc="Core identity, role, and background information."
         >
+          <div className="photo-upload">
+  <div className="photo-circle">
+    {photo ? (
+      <img src={photo} alt="Staff preview" />
+    ) : (
+      <span>{getInitials(values.name) || <Camera size={22} />}</span>
+    )}
+  </div>
+  <div className="photo-actions">
+    <label className="outline small photo-btn">
+      <Camera size={14} />
+      {photo ? "Change Photo" : "Upload Photo"}
+      <input
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => handlePhoto(e.target.files[0])}
+      />
+    </label>
+    {photo && (
+      <button type="button" className="medication-remove" onClick={() => setPhoto("")}>
+        <Trash2 size={13} /> Remove
+      </button>
+    )}
+    <small className="field-hint">JPG or PNG. It is resized automatically.</small>
+  </div>
+</div>  
           <div className="form-grid">
             <Field label="Full Name" required>
               <input

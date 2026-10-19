@@ -778,3 +778,13 @@
     margin-left: 0;
   }
 }
+.staff-hero-avatar {
+  overflow: hidden;
+}
+.staff-hero-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}

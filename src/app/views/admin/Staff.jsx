@@ -267,6 +267,8 @@ function Staff() {
       setDeleting(false);
     }
   };
+  const getInitials = (name = "") =>
+  name.split(" ").filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <div className="staff-page">
@@ -302,7 +304,13 @@ function Staff() {
             return (
               <div className="staff-card" key={id}>
                 <div className="staff-card-top">
-                  <span className="staff-initial">{staff.initials}</span>
+            <span className="staff-initial">
+  {staff.profilePhoto ? (
+    <img src={staff.profilePhoto} alt={staffName(staff)} />
+  ) : (
+    staff.initials || getInitials(staffName(staff))
+  )}
+</span>
                   <div className="staff-name">
                     <b>{staffName(staff)}</b>
                     <small>{staff.role} · {id}</small>

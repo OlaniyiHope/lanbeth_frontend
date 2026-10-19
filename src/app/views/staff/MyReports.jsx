@@ -455,7 +455,7 @@ const handleDeleteReport = async (report) => {
         )}
       </div>
 
-      <div className="watermark">LANBETH RESOLUTION HOMECARE</div>
+      <div className="watermark">LANBETH CARE</div>
 
       {selectedReport && (
         <ReportModal

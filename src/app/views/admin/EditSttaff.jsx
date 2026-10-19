@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Camera, Trash2 } from "lucide-react";
 import { useData } from "../../../context/DataContext.jsx";
 import { getStaffById, updateStaffMember } from "../../../lib/api.js";
 import "./StaffProfile.css";
@@ -40,7 +40,30 @@ function extractRecord(response) {
   if (response._id || response.id) return response;
   return null;
 }
+function getInitials(name = "") {
+  return name.split(" ").filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+}
 
+function resizeImage(file, max = 256) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 function EditStaff() {
   const nav = useNavigate();
   const { id } = useParams();
@@ -50,7 +73,15 @@ function EditStaff() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
+const handlePhoto = async (file) => {
+  if (!file) return;
+  try {
+    const dataUrl = await resizeImage(file);
+    setForm((prev) => ({ ...prev, profilePhoto: dataUrl }));
+  } catch {
+    setError("Could not read that image. Please try another file.");
+  }
+};
   useEffect(() => {
     let cancelled = false;
 
@@ -102,7 +133,8 @@ function EditStaff() {
     setSaving(true);
     setError("");
     try {
-      const response = await updateStaffMember(id, form);
+     const { _id, id: _ignored, __v, createdAt, updatedAt, documents, ...editable } = form;
+const response = await updateStaffMember(id, editable);
       const updated = extractRecord(response) || form;
 
       // Keep local cache in sync so the profile page reflects the change
@@ -160,7 +192,37 @@ function EditStaff() {
 
       <form className="info-panel" onSubmit={handleSubmit}>
         <div className="subsection-bar">Staff Details</div>
-
+<div className="photo-upload">
+  <div className="photo-circle">
+    {form?.profilePhoto ? (
+      <img src={form.profilePhoto} alt="Staff" />
+    ) : (
+      <span>{getInitials(form?.fullName) || <Camera size={22} />}</span>
+    )}
+  </div>
+  <div className="photo-actions">
+    <label className="outline small photo-btn">
+      <Camera size={14} />
+      {form?.profilePhoto ? "Change Photo" : "Upload Photo"}
+      <input
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => handlePhoto(e.target.files[0])}
+      />
+    </label>
+    {form?.profilePhoto && (
+      <button
+        type="button"
+        className="medication-remove"
+        onClick={() => setForm((prev) => ({ ...prev, profilePhoto: "" }))}
+      >
+        <Trash2 size={13} /> Remove
+      </button>
+    )}
+    <small className="field-hint">JPG or PNG. It is resized automatically.</small>
+  </div>
+</div>
         <div className="form-grid">
           {FIELDS.map(({ key, label, type, wide }) => (
             <label className={`field ${wide ? "wide" : ""}`} key={key}>

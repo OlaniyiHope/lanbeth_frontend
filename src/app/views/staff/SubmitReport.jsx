@@ -1501,7 +1501,7 @@ const handleSubmitReport = async (event) => {
       </form>
 
       <div className="report-watermark">
-        LANBETH RESOLUTION HOMECARE
+        LANBETH CARE
       </div>
     </div>
   );

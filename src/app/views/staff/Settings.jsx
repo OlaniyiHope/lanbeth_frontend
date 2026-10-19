@@ -466,7 +466,7 @@ export default function Settings() {
 
 
       <div className="watermark">
-        LANBETH RESOLUTION HOMECARE
+        LANBETH CARE
       </div>
 
     </div>

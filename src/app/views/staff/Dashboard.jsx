@@ -506,7 +506,7 @@ export default function Dashboard() {
 
 
       <div className="watermark">
-        LANBETH RESOLUTION HOMECARE
+        LANBETH CARE
       </div>
 
     </div>

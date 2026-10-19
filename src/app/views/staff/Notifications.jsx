@@ -342,7 +342,7 @@ function Notifications() {
       </section>
 
       <div className="watermark">
-        LANBETH RESOLUTION HOMECARE
+        LANBETH CARE
       </div>
 
       {/* DETAILS MODAL */}

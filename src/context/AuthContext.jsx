@@ -138,12 +138,19 @@ export function AuthProvider({ children }) {
   const logout = () => {
     forceLogout();
   };
-
+const updateUser = (patch) => {
+  setUser((prev) => {
+    const next = { ...prev, ...patch };
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(next));
+    return next;
+  });
+};
   const value = {
     user,
     isAuthenticated: !!user,
     isInitialised,
     role: user?.role || null,
+      updateUser,
     login,
     register,
     logout,

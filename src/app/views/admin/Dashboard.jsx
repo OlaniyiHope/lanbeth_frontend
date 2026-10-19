@@ -728,7 +728,7 @@ const loadExpiryDocuments = async () => {
         <div>
           <div className="eyebrow">LANBETHCARE</div>
 
-          <h1>LANBETH RESOLUTION HOMECARE</h1>
+          <h1>LANBETH CARE</h1>
 
           <p>
             Manage clients, staff, reports, and more.

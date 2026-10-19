@@ -80,7 +80,7 @@ function Shell({data,setData,auth,setAuth,authUser,setAuthUser,theme,setTheme}){
   </div>;
 }
 
-function Brand(){return <div className="brand"><span className="brand-mark">L</span><div><b>Lambeth<span>Care</span></b><small>Resolution Homecare</small></div></div>}
+function Brand(){return <div className="brand"><span className="brand-mark">L</span><div><b>Lambeth<span>Care</span></b><small></small></div></div>}
 
 function Landing({onLogin,onSignup}){const scroll=id=>document.getElementById(id)?.scrollIntoView({behavior:'smooth'}); return <div className="landing">
   <video className="landing-video" autoPlay muted loop playsInline poster="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=2200&q=85"><source src="https://cdn.coverr.co/videos/coverr-a-doctor-talking-to-a-patient-1572/1080p.mp4" type="video/mp4"/></video>

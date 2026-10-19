@@ -48,61 +48,61 @@
 // }
 // export function fetchMe() {
 //   return request('/api/auth/me');
-// }
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  // }
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
-async function request(path, options = {}) {
-  const token = localStorage.getItem('lanbeth-auth-token');
+  async function request(path, options = {}) {
+    const token = localStorage.getItem('lanbeth-auth-token');
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+    const res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
 
-  const data = await res.json().catch(() => ({}));
+    const data = await res.json().catch(() => ({}));
 
-  if (!res.ok) {
-    throw new Error(data.message || data.error || 'Something went wrong. Please try again.');
+    if (!res.ok) {
+      throw new Error(data.message || data.error || 'Something went wrong. Please try again.');
+    }
+
+    return data;
   }
 
-  return data;
-}
+  export function login(identifier, password) {
+    return request('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ identifier, password }),
+    });
+  }
 
-export function login(identifier, password) {
-  return request('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ identifier, password }),
-  });
-}
+  export function register(payload) {
+    return request('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
 
-export function register(payload) {
-  return request('/api/auth/register', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
+  export function fetchMe() {
+    return request('/api/auth/me');
+  }
 
-export function fetchMe() {
-  return request('/api/auth/me');
-}
+  export function getStaffById(id) {
+    return request(`/api/staff/${id}`);
+  }
 
-export function getStaffById(id) {
-  return request(`/api/staff/${id}`);
-}
+  export function updateStaffMember(id, payload) {
+    return request(`/api/staff/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
 
-export function updateStaffMember(id, payload) {
-  return request(`/api/staff/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
-}
-
-export function deleteStaffMember(id) {
-  return request(`/api/staff/${id}`, {
-    method: 'DELETE',
-  });
-}
+  export function deleteStaffMember(id) {
+    return request(`/api/staff/${id}`, {
+      method: 'DELETE',
+    });
+  }

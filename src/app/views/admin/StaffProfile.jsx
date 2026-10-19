@@ -798,13 +798,13 @@ function StaffProfile() {
 
         <div className="staff-hero-main">
 
-          <span className="staff-hero-avatar">
-            {staff.initials ||
-              getInitials(
-                staff.name ||
-                  staff.fullName
-              )}
-          </span>
+       <span className="staff-hero-avatar">
+  {staff.profilePhoto ? (
+    <img src={staff.profilePhoto} alt={staff.name || staff.fullName} />
+  ) : (
+    staff.initials || getInitials(staff.name || staff.fullName)
+  )}
+</span>
 
           <div className="staff-hero-id">
 

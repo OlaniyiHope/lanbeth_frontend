@@ -124,6 +124,7 @@ function EditClient() {
           email: client.email || "",
           phone: client.phone || "",
           keySafeCode: client.keySafeCode || "",
+          localAuthorityNo: client.localAuthorityNo || "",
           dateOfBirth: toDateInputValue(client.dateOfBirth),
           address: client.address || "",
           postCode: client.postCode || "",
@@ -265,6 +266,7 @@ function EditClient() {
       email: values.email,
       phone: values.phone,
       keySafeCode: values.keySafeCode,
+      localAuthorityNo: values.localAuthorityNo.trim() || null,
       dateOfBirth: values.dateOfBirth || undefined,
       address: values.address,
       postCode: values.postCode,
@@ -360,6 +362,13 @@ function EditClient() {
             <Field label="Key Safe Code">
               <input value={values.keySafeCode} onChange={(e) => update("keySafeCode", e.target.value)} />
             </Field>
+            <Field label="Local Authority ID No.">
+  <input
+    value={values.localAuthorityNo}
+    onChange={(e) => update("localAuthorityNo", e.target.value)}
+    placeholder="e.g. LA-2026-00123"
+  />
+</Field>
             <Field label="Date of Birth" required>
               <input type="date" value={values.dateOfBirth} onChange={(e) => update("dateOfBirth", e.target.value)} />
             </Field>

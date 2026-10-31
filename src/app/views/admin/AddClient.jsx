@@ -165,6 +165,7 @@ const emptyClient = {
   email: "",
   phone: "",
   keySafeCode: "",
+   localAuthorityNo: "", 
   dateOfBirth: "",
   address: "",
   postCode: "",
@@ -394,6 +395,7 @@ for (const doc of documents) {
       email: values.email,
       phone: values.phone,
       keySafeCode: values.keySafeCode,
+      localAuthorityNo: values.localAuthorityNo.trim() || undefined,
       dateOfBirth: values.dateOfBirth || undefined,
       address: values.address,
       postCode: values.postCode,
@@ -544,6 +546,11 @@ for (const doc of documents) {
     <small className="field-hint">JPG or PNG. It is resized automatically.</small>
   </div>
 </div>
+{values.localAuthorityNo.trim() && (
+  <div className="local-authority-badge">
+    LA No: <strong>{values.localAuthorityNo.trim()}</strong>
+  </div>
+)}
           <div className="form-grid">
             
             <Field label="Full Name" required>
@@ -575,6 +582,13 @@ for (const doc of documents) {
                 placeholder="e.g. 4821"
               />
             </Field>
+            <Field label="Local Authority ID No.">
+  <input
+    value={values.localAuthorityNo}
+    onChange={(e) => update("localAuthorityNo", e.target.value)}
+    placeholder="e.g. LA-2026-00123"
+  />
+</Field>
             <Field label="Date of Birth" required>
               <input
                 type="date"

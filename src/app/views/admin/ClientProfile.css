@@ -639,7 +639,10 @@
   margin: 0;
   font-size: 16px;
 }
-
+.client-hero-id .client-hero-code {
+  display: block;
+  margin-top: 4px;
+}
 .assign-staff-title p {
   margin: 4px 0 0;
   font-size: 13px;

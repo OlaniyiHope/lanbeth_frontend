@@ -188,6 +188,11 @@ function ClientProfile() {
           <div className="client-hero-id">
             <h2>{client.fullName}</h2>
             <span className="client-hero-code">Client ID: {client.clientId}</span>
+             {client.localAuthorityNo && (
+    <span className="client-hero-code">
+      Local Authority No: {client.localAuthorityNo}
+    </span>
+  )}
             <div className="client-hero-meta">
               {age !== null && <span>{age} years old</span>}
               {client.gender && <span>{client.gender}</span>}

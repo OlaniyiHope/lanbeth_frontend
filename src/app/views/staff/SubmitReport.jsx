@@ -203,7 +203,16 @@ function getInitials(name = "") {
     .slice(0, 2)
     .toUpperCase();
 }
+const BLOCKED_EXTENSIONS = [
+  "exe", "msi", "msp", "bat", "cmd", "com", "scr", "pif", "cpl",
+  "sh", "bash", "ps1", "vbs", "vbe", "wsf", "wsh", "hta",
+  "jar", "dll", "app", "run", "bin", "reg", "lnk", "apk",
+];
 
+function getFileExtension(name = "") {
+  const parts = name.split(".");
+  return parts.length > 1 ? parts.pop().toLowerCase() : "";
+}
 export default function SubmitReport() {
   const nav = useNavigate();
 const { id } = useParams();
@@ -249,23 +258,32 @@ const client =
       };
     });
   };
+const handleReportFile = (file) => {
+  if (!file) return;
 
-  const handleReportFile = (file) => {
-    if (!file) return;
+  const extension = getFileExtension(file.name);
 
-    if (file.type !== "application/pdf") {
-      setError("Please upload the client report as a PDF file.");
-      return;
-    }
+  if (BLOCKED_EXTENSIONS.includes(extension)) {
+    setError(
+      `Files of type .${extension} are not allowed. Please upload a document, image or other non-executable file.`
+    );
+    return;
+  }
 
-    setError("");
+  if (file.size === 0) {
+    setError("The selected file is empty.");
+    return;
+  }
 
-    setReportFile({
-      id: makeId(),
-      name: file.name,
-      url: URL.createObjectURL(file),
-    });
-  };
+  setError("");
+
+  setReportFile({
+    id: makeId(),
+    name: file.name,
+    file, // keep the File object so it can be uploaded on submit
+    url: URL.createObjectURL(file),
+  });
+};
 
   const removeReportFile = () => {
     if (reportFile?.url) {
@@ -1405,23 +1423,24 @@ const handleSubmitReport = async (event) => {
             PDF
         ============================== */}
 
-        <ReportSection
-          icon={<UploadCloud size={18} />}
-          title="Upload Client Report As PDF"
-          description="Upload the completed client care report in PDF format."
-        >
+      <ReportSection
+  icon={<UploadCloud size={18} />}
+  title="Upload Client Report"
+  description="Upload the completed client care report. Executable files are not accepted."
+>
           <label className="pdf-upload">
             <UploadCloud size={25} />
 
-            <strong>Click to browse</strong>
+           <strong>Click to browse</strong>
+    <span>Any file type except executables (.exe, .bat, .msi, etc.)</span>
 
-            <span>Only PDF files should be uploaded.</span>
-
-            <input
-              type="file"
-              accept="application/pdf,.pdf"
-              onChange={(e) => handleReportFile(e.target.files?.[0])}
-            />
+    <input
+      type="file"
+      onChange={(e) => {
+        handleReportFile(e.target.files?.[0]);
+        e.target.value = "";
+      }}
+    />
           </label>
 
           {reportFile && (

@@ -101,7 +101,7 @@ const submit = async (e) => {
         <div className="auth-copy">
           <Brand />
           <span className="eyebrow">LANBETHCARE PORTAL</span>
-          <h1>{signup ? 'Start your care portal journey.' : 'Welcome back to better care management.'}</h1>
+          <h1>{signup ? 'Start your care portal journey.' : 'Welcome Back to Lanbeth Care.'}</h1>
           <p>Securely manage care operations with a clear, connected workflow.</p>
         </div>
       </div>

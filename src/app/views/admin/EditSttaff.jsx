@@ -73,6 +73,7 @@ function EditStaff() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [passwords, setPasswords] = useState({ newPassword: "", confirmPassword: "" });
 const handlePhoto = async (file) => {
   if (!file) return;
   try {
@@ -128,32 +129,71 @@ const handlePhoto = async (file) => {
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
-    try {
-     const { _id, id: _ignored, __v, createdAt, updatedAt, documents, ...editable } = form;
-const response = await updateStaffMember(id, editable);
-      const updated = extractRecord(response) || form;
+//   const handleSubmit = async (e) => {
+//     e.preventDefault();
+//     setSaving(true);
+//     setError("");
+//     try {
+//      const { _id, id: _ignored, __v, createdAt, updatedAt, documents, ...editable } = form;
+// const response = await updateStaffMember(id, editable);
+//       const updated = extractRecord(response) || form;
 
-      // Keep local cache in sync so the profile page reflects the change
-      // immediately without waiting for a full refetch.
-      setData({
-        ...data,
-        staff: data.staff.map((s) =>
-          (s._id || s.id) === id ? { ...s, ...updated } : s
-        ),
-      });
+//       // Keep local cache in sync so the profile page reflects the change
+//       // immediately without waiting for a full refetch.
+//       setData({
+//         ...data,
+//         staff: data.staff.map((s) =>
+//           (s._id || s.id) === id ? { ...s, ...updated } : s
+//         ),
+//       });
 
-      nav(`/admin/staff-profile/${id}`);
-    } catch (err) {
-      setError(err.message || "Failed to save changes.");
-    } finally {
-      setSaving(false);
+//       nav(`/admin/staff-profile/${id}`);
+//     } catch (err) {
+//       setError(err.message || "Failed to save changes.");
+//     } finally {
+//       setSaving(false);
+//     }
+//   };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
+
+  if (passwords.newPassword) {
+    if (passwords.newPassword.length < 8) {
+      setError("New password must be at least 8 characters.");
+      return;
     }
-  };
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      setError("The passwords do not match.");
+      return;
+    }
+  }
 
+  setSaving(true);
+  try {
+    const { _id, id: _ignored, __v, createdAt, updatedAt, documents, password, ...editable } = form;
+
+    const payload = passwords.newPassword
+      ? { ...editable, password: passwords.newPassword }
+      : editable;
+
+    const response = await updateStaffMember(id, payload);
+    const updated = extractRecord(response) || form;
+
+    setData({
+      ...data,
+      staff: data.staff.map((s) =>
+        (s._id || s.id) === id ? { ...s, ...updated } : s
+      ),
+    });
+
+    nav(`/admin/staff-profile/${id}`);
+  } catch (err) {
+    setError(err.message || "Failed to save changes.");
+  } finally {
+    setSaving(false);
+  }
+};
   if (loading) {
     return (
       <div className="staff-profile-page">
@@ -235,7 +275,30 @@ const response = await updateStaffMember(id, editable);
             </label>
           ))}
         </div>
-
+<div className="subsection-bar" style={{ marginTop: 24 }}>Reset Password</div>
+<p className="field-hint">
+  Leave blank to keep the current password. The existing password cannot be viewed, only replaced.
+</p>
+<div className="form-grid">
+  <label className="field">
+    <span>New Password</span>
+    <input
+      type="password"
+      autoComplete="new-password"
+      value={passwords.newPassword}
+      onChange={(e) => setPasswords((p) => ({ ...p, newPassword: e.target.value }))}
+    />
+  </label>
+  <label className="field">
+    <span>Confirm New Password</span>
+    <input
+      type="password"
+      autoComplete="new-password"
+      value={passwords.confirmPassword}
+      onChange={(e) => setPasswords((p) => ({ ...p, confirmPassword: e.target.value }))}
+    />
+  </label>
+</div>
         {error && <div className="upload-confirm" style={{ color: "#b91c1c" }}>{error}</div>}
 
         <div className="confirm-actions" style={{ marginTop: 20 }}>

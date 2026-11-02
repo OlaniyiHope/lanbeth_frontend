@@ -12,6 +12,7 @@ import {
   Trash2,
   Camera,
   ClipboardPlus,
+  Landmark,
   Pill,
   Stethoscope
 } from "lucide-react";
@@ -180,6 +181,10 @@ const emptyClient = {
   relationship: "",
   nextOfKinName: "",
   nextOfKinPhone: "",
+   councilServiceUserId: "",
+  councilCareProviderId: "",
+  serviceType: "",
+  serviceLevel: "",
   medicalHistory: "",
   allergies: "",
   favouriteActivities: "",
@@ -401,6 +406,10 @@ for (const doc of documents) {
       postCode: values.postCode,
       region: values.region,
       maritalStatus: values.maritalStatus,
+      councilServiceUserId: values.councilServiceUserId.trim() || undefined,
+councilCareProviderId: values.councilCareProviderId.trim() || undefined,
+serviceType: values.serviceType.trim() || undefined,
+serviceLevel: values.serviceLevel.trim() || undefined,
       profilePhoto: photo || undefined,
       religion: values.religion,
       ethnicity: values.ethnicity || undefined,
@@ -714,6 +723,42 @@ for (const doc of documents) {
             </Field>
           </div>
         </FormSection>
+        <FormSection
+  icon={<Landmark size={16} />}
+  title="Council"
+  desc="Council reference numbers and the service this client receives."
+>
+  <div className="form-grid">
+    <Field label="Council: Service User ID">
+      <input
+        value={values.councilServiceUserId}
+        onChange={(e) => update("councilServiceUserId", e.target.value)}
+        placeholder="e.g. SU-004521"
+      />
+    </Field>
+    <Field label="Council: Care Provider ID">
+      <input
+        value={values.councilCareProviderId}
+        onChange={(e) => update("councilCareProviderId", e.target.value)}
+        placeholder="e.g. CP-00918"
+      />
+    </Field>
+    <Field label="Service Type">
+      <input
+        value={values.serviceType}
+        onChange={(e) => update("serviceType", e.target.value)}
+        placeholder="e.g. Domiciliary care"
+      />
+    </Field>
+    <Field label="Service Level">
+      <input
+        value={values.serviceLevel}
+        onChange={(e) => update("serviceLevel", e.target.value)}
+        placeholder="e.g. Level 2"
+      />
+    </Field>
+  </div>
+</FormSection>
 <FormSection
   icon={<Stethoscope size={16} />}
   title="Professionals Around the Individual"

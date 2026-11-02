@@ -143,3 +143,4 @@
 .notif-error {
   color: var(--danger, #dc2626);
 }
+.notif-item.birthday .notif-icon { color: #db2777; }

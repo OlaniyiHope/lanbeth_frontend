@@ -486,6 +486,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../../../context/DataContext.jsx";
 import "./Dashboard.css";
+import BirthdayCard from "./BirthdayCard.jsx";
 
 const API_BASE_URL =
   (import.meta.env.VITE_API_URL || "http://localhost:5001").replace(
@@ -910,7 +911,7 @@ const loadExpiryDocuments = async () => {
 
       </div>
 
-
+<BirthdayCard />
       {/* =========================
           MAIN DASHBOARD GRID
       ========================== */}

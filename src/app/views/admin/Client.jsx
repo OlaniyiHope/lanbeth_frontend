@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, Eye, Pencil, Trash2, Users } from "lucide-react";
+
+import { Search, Plus, Eye, Pencil, Trash2, Users, List, LayoutGrid } from "lucide-react";
+
 import { useData } from "../../../context/DataContext.jsx";
 import "./Clients.css";
 
@@ -9,7 +11,7 @@ function Clients() {
   const { data, setData } = useData();
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(null);
-
+const [view, setView] = useState("cards");
   const filteredClients = data.clients.filter((client) => {
     const value = `
       ${client.name}
@@ -39,23 +41,32 @@ function Clients() {
         </div>
       </div>
 
-      <div className="clients-toolbar">
-        <div className="client-search">
-          <Search size={16} />
-          <input
-            type="text"
-            placeholder="Search clients..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+    <div className="clients-toolbar">
+  <div className="client-search">
+    <Search size={16} />
+    <input
+      type="text"
+      placeholder="Search clients..."
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+    />
+  </div>
 
-        <button className="primary" onClick={() => nav("/admin/add-client")}>
-          <Plus size={15} />
-          Add Client
-        </button>
-      </div>
+  <div style={{ display: "flex", gap: 8 }}>
+    <button
+      className="outline"
+      onClick={() => setView((v) => (v === "cards" ? "table" : "cards"))}
+    >
+      {view === "cards" ? <List size={15} /> : <LayoutGrid size={15} />}
+      {view === "cards" ? "Table View" : "Card View"}
+    </button>
 
+    <button className="primary" onClick={() => nav("/admin/add-client")}>
+      <Plus size={15} />
+      Add Client
+    </button>
+  </div>
+</div>
       <div className="client-summary">
         <div>
           <span className="summary-icon"><Users size={18} /></span>
@@ -79,7 +90,7 @@ function Clients() {
           </strong>
         </div>
       </div>
-
+{view === "cards" ? (
       <div className="clients-grid">
         {filteredClients.length > 0 ? (
           filteredClients.map((client) => (
@@ -150,7 +161,9 @@ function Clients() {
           </div>
         )}
       </div>
-
+) : (
+  <ClientsTable clients={filteredClients} />
+)}
       {modal && (
         <Modal
           title={
@@ -195,6 +208,72 @@ function Clients() {
 
 function getInitials(name = "") {
   return name.split(" ").filter(Boolean).map((word) => word[0]).join("").slice(0, 2).toUpperCase();
+}
+const formatDate = (value) =>
+  value
+    ? new Date(value).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        timeZone: "UTC",
+      })
+    : "—";
+
+function ClientsTable({ clients }) {
+  const nav = useNavigate();
+
+  if (clients.length === 0) {
+    return (
+      <div className="empty-clients">
+        <h3>No clients found</h3>
+      </div>
+    );
+  }
+
+  return (
+    <div className="clients-table-wrap">
+      <table className="clients-table">
+        <thead>
+          <tr>
+            <th>Photo</th>
+            <th>Name</th>
+            <th>Authority</th>
+            <th>Food Allergy</th>
+            <th>Date of Birth</th>
+            <th>Council Service User ID</th>
+            <th>Council Care Provider ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          {clients.map((client) => {
+            const name = client.fullName || client.name || "";
+            return (
+              <tr
+                key={client.clientId || client._id}
+                onClick={() => nav(`/admin/client-profile/${client.clientId}`)}
+              >
+                <td>
+                  <span className="client-avatar">
+                    {client.profilePhoto ? (
+                      <img src={client.profilePhoto} alt={name} />
+                    ) : (
+                      getInitials(name)
+                    )}
+                  </span>
+                </td>
+                <td>{name}</td>
+                <td>{client.authority || "—"}</td>
+                <td>{client.foodAllergy || "None"}</td>
+                <td>{formatDate(client.dateOfBirth)}</td>
+                <td>{client.councilServiceUserId || "—"}</td>
+                <td>{client.councilCareProviderId || "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function Status({ status }) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, CheckCheck, FileWarning, Clock } from "lucide-react";
+import { Bell, CheckCheck, FileWarning, Clock, Cake } from "lucide-react";
 import "./NotificationBell.css";
 
 const API = import.meta.env.VITE_API_URL || "";
@@ -130,18 +130,20 @@ export default function NotificationBell() {
             {items.map((n) => (
               <button
                 key={n._id}
-                className={`notif-item ${n.read ? "" : "unread"} ${
-                  n.type === "document_expired" ? "expired" : "expiring"
-                }`}
+               className={`notif-item ${n.read ? "" : "unread"} ${
+  n.type === "document_expired" ? "expired" : n.type === "birthday" ? "birthday" : "expiring"
+}`}
                 onClick={() => markOne(n)}
               >
-                <span className="notif-icon">
-                  {n.type === "document_expired" ? (
-                    <FileWarning size={16} />
-                  ) : (
-                    <Clock size={16} />
-                  )}
-                </span>
+               <span className="notif-icon">
+  {n.type === "document_expired" ? (
+    <FileWarning size={16} />
+  ) : n.type === "birthday" ? (
+    <Cake size={16} />
+  ) : (
+    <Clock size={16} />
+  )}
+</span>
                 <span className="notif-body">
                   <span className="notif-title">{n.title}</span>
                   <span className="notif-msg">{n.message}</span>

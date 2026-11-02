@@ -800,3 +800,15 @@
 
 
 }
+.birthday-card { border: 1px solid var(--border, #e5e7eb); border-radius: 12px; padding: 14px; background: var(--card, #fff); }
+.birthday-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.birthday-window, .birthday-empty, .birthday-error { font-size: 12px; color: var(--muted, #6b7280); }
+.birthday-error { color: var(--danger, #dc2626); }
+.birthday-list { list-style: none; margin: 0; padding: 0; }
+.birthday-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border, #f1f5f9); font-size: 13px; }
+.birthday-kind { font-size: 11px; padding: 2px 6px; border-radius: 6px; background: #e0e7ff; color: #3730a3; }
+.birthday-kind.staff { background: #dcfce7; color: #166534; }
+.birthday-name { flex: 1; font-weight: 600; }
+.birthday-age { color: var(--muted, #6b7280); }
+.birthday-when { font-weight: 600; }
+.birthday-when.today { color: #db2777; }

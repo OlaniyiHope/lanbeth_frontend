@@ -15,6 +15,7 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import "./Dashboard.css";
+import BirthdayCard from "../admin/BirthdayCard";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -149,7 +150,7 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
-
+<BirthdayCard />
 
       {/* ================= ERROR ================= */}
 

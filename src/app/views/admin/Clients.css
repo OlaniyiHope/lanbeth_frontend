@@ -52,3 +52,51 @@
 @media(max-width:1200px){.clients-grid{grid-template-columns:repeat(2,1fr)}.client-summary{grid-template-columns:1fr}}
 @media(max-width:800px){.clients-grid{grid-template-columns:1fr}}
 @media(max-width:520px){.clients-toolbar{display:grid;grid-template-columns:1fr}.clients-toolbar .primary{width:100%}.client-detail-grid{grid-template-columns:1fr}}
+
+.clients-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  background: var(--card, #fff);
+}
+
+.clients-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.clients-table th,
+.clients-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border, #f1f5f9);
+}
+
+.clients-table th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted, #6b7280);
+  background: var(--hover, #f9fafb);
+}
+
+.clients-table tbody tr {
+  cursor: pointer;
+}
+
+.clients-table tbody tr:hover {
+  background: var(--hover, rgba(0, 0, 0, 0.03));
+}
+
+.clients-table .client-avatar {
+  width: 36px;
+  height: 36px;
+}
+
+.clients-table .client-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}

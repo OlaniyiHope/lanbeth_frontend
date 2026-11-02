@@ -21,6 +21,7 @@
 // }
 import { ChevronRight, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
+import NotificationBell from "./NotificationBell.jsx";
 import "./Sidebar.css"
 
 function getInitials(name = "") {
@@ -36,6 +37,8 @@ function getInitials(name = "") {
 export default function AppTopbar({ theme, toggleTheme, onMenuClick }) {
   const { role, user } = useAuth();
   const displayName = user?.fullName || user?.name || "";
+   const hasInbox = role === "admin" || role === "staff";
+
 console.log("topbar user:", user, user?.profilePhoto?.slice(0, 30));
   return (
     <header className="topbar">
@@ -45,7 +48,9 @@ console.log("topbar user:", user, user?.profilePhoto?.slice(0, 30));
         </button>
         <div className="crumb"><span>LanbethCare</span><ChevronRight size={15} /><b>{role} Portal</b></div>
       </div>
+  
       <div className="top-actions">
+         {hasInbox && <NotificationBell />}
         <button className="icon-btn theme-toggle" onClick={toggleTheme}>
           {theme === 'light' ? <span>☾</span> : <span>☀</span>}
         </button>

@@ -524,12 +524,21 @@ import { useData } from "../../../context/DataContext.jsx";
 import "./AddStaff.css";
 
 export const DOC_TYPES = [
-  "Immigration Status",
-  "Driver License",
-  "Supervision Note",
+  "NIN",
+  "Voter's Card",
+  "International Passport",
+  "Driver's License",
+  "Work Permit",
+  "Residence Permit",
   "Training Certificate",
-  "DBS",
+  "First Aid Certificate",
+  "DBS Certificate",
+  "Medical Certificate",
+  "Care Certificate",
+  "Supervision Note",
   "National Insurance",
+  "Immigration Status",
+  "Other",
 ];
 
 // UK ONS 2021 Census ethnicity categories (England & Wales) — the standard
@@ -666,20 +675,29 @@ const handlePhoto = async (file) => {
 };
   const update = (field, value) => setValues((v) => ({ ...v, [field]: value }));
 
-  const handleFile = (fileList) => {
-    const file = fileList?.[0];
-    if (!file) return;
-    setDocuments((docs) => [
-      ...docs.filter((d) => d.type !== docType),
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        type: docType,
-        name: file.name,
-        url: URL.createObjectURL(file),
-        expiry: docExpiry,
-      },
-    ]);
-  };
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+const handleFile = (fileList) => {
+  const file = fileList?.[0];
+  if (!file) return;
+
+  if (file.size > MAX_FILE_BYTES) {
+    setError(`${file.name} is larger than 10 MB.`);
+    return;
+  }
+
+  setDocuments((docs) => [
+    ...docs,
+    {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type: docType,
+      name: file.name,
+      file,
+      url: URL.createObjectURL(file),
+      expiry: docExpiry,
+    },
+  ]);
+};
 
   const removeDocument = (id) => {
     setDocuments((docs) => {
@@ -688,7 +706,29 @@ const handlePhoto = async (file) => {
       return docs.filter((d) => d.id !== id);
     });
   };
+const uploadStaffDocument = async (staffId, doc) => {
+  const token = localStorage.getItem("lanbeth-auth-token");
 
+  const form = new FormData();
+  form.append("file", doc.file);
+  form.append("documentType", doc.type);
+  if (doc.expiry) form.append("expiryDate", doc.expiry);
+
+  // Don't set Content-Type; the browser adds the multipart boundary itself
+  const res = await fetch(`${API_BASE_URL}/api/staff/${staffId}/documents`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+
+  const data = await res.json().catch(() => ({}));
+ 
+   if (!res.ok) {
+    throw new Error(data.error || data.message || `Failed to upload ${doc.name}`);
+  }
+
+  return data;
+};
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5001";
 
@@ -879,25 +919,36 @@ const submit = async (e) => {
           ? "active"
           : "inactive",
 
-      documents: documents.map((doc) => ({
-        documentType: doc.type,
-        fileName: doc.name,
-        fileUrl: doc.url,
-        expiryDate: doc.expiry || undefined,
-      })),
     };
 
     // createStaff sends the request AND updates DataContext.staff
     const createdStaff = await createStaff(payload);
+const staffId = createdStaff?._id ?? createdStaff?.id;
 
-    console.log(
-      "Staff created successfully:",
-      createdStaff
-    );
+if (!staffId) {
+  setError("Staff was created, but the server did not return an ID, so documents could not be uploaded.");
+  return;
+}
+const failedUploads = [];
+for (const doc of documents) {
+  try {
+    await uploadStaffDocument(staffId, doc);
+  } catch (uploadErr) {
+    failedUploads.push(doc.name);
+    console.error("Document upload failed:", uploadErr);
+  }
+}
 
-    // Go back to the staff list.
-    // The new staff is already in DataContext at this point.
-    nav("/admin/staff");
+if (failedUploads.length) {
+  setError(
+    `Staff was created, but these documents failed to upload: ${failedUploads.join(", ")}. Add them from the staff profile.`
+  );
+  return; // stay on the page so the admin can see the message
+}
+
+nav("/admin/staff");
+
+
 
   } catch (err) {
     console.error("Create staff error:", err);
@@ -942,7 +993,7 @@ const submit = async (e) => {
       {photo ? "Change Photo" : "Upload Photo"}
       <input
         type="file"
-        accept="image/*"
+          accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,image/*,application/pdf"
         hidden
         onChange={(e) => handlePhoto(e.target.files[0])}
       />
@@ -1171,7 +1222,8 @@ const submit = async (e) => {
         <FormSection
           icon={<UploadCloud size={16} />}
           title="Upload Staff Documents"
-          desc="PDF or JPG. You can upload more from the staff profile once created."
+         
+          desc="PDF, JPG, PNG, WEBP, DOC or DOCX. You can upload more from the staff profile once created."
         >
           <div className="form-grid">
             <Field label="Document Type">
@@ -1192,10 +1244,14 @@ const submit = async (e) => {
 
           <label className="upload-drop">
             <UploadCloud size={18} />
-            <span>
-              <b>Click to browse</b> or drag a file in (PDF, JPG)
-            </span>
-            <input type="file" accept=".pdf,.jpg,.jpeg" onChange={(e) => handleFile(e.target.files)} />
+       <span>
+    <b>Click to browse</b> or drag a file in (PDF, JPG, PNG, WEBP, DOC, DOCX)
+  </span>
+           <input
+    type="file"
+    accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,image/*,application/pdf"
+    onChange={(e) => handleFile(e.target.files)}
+  />
           </label>
 
           {documents.length > 0 && (

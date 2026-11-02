@@ -1320,59 +1320,532 @@ function FamilyTab({ client }) {
 //   );
 // }
 
+function localToday() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
-function ReportsTab({ client }) { const [reports, setReports] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [filterDate, setFilterDate] = useState(""); const [selectedReport, setSelectedReport] = useState(null); const clientId = client?._id || client?.clientId; const API_BASE_URL = ( import.meta.env.VITE_API_URL || "http://localhost:5001" ).replace(/\/$/, ""); const token = localStorage.getItem("lanbeth-auth-token"); const loadReports = async () => { if (!clientId || !token) { setLoading(false); return; } try { setLoading(true); setError(""); const response = await fetch( `${API_BASE_URL}/api/clients/${clientId}/reports`, { method: "GET", headers: { Authorization: `Bearer ${token}`, }, } ); const result = await response.json(); if (!response.ok) { throw new Error( result?.message || result?.error || "Failed to load client reports." ); } /* * Support the common response formats: * * { reports: [...] } * { data: [...] } * [...] */ const loadedReports = Array.isArray(result) ? result : Array.isArray(result?.reports) ? result.reports : Array.isArray(result?.data) ? result.data : []; setReports(loadedReports); } catch (err) { console.error("Load client reports error:", err); setError(err.message || "Unable to load client reports."); } finally { setLoading(false); } }; useEffect(() => { loadReports(); }, [clientId]); /* * Get the report date regardless of which * field name the backend is currently using. */ const getReportDate = (report) => { return ( report?.reportDate || report?.date || report?.createdAt || report?.submittedAt || "" ); }; /* * Convert a report date to YYYY-MM-DD so * it matches the HTML date input. */ const getDateValue = (value) => { if (!value) return ""; if ( typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ) { return value; } const date = new Date(value); if (Number.isNaN(date.getTime())) { return ""; } const year = date.getFullYear(); const month = String(date.getMonth() + 1).padStart(2, "0"); const day = String(date.getDate()).padStart(2, "0"); return `${year}-${month}-${day}`; }; const formatReportDate = (value) => { if (!value) return "—"; const date = new Date(value); if (Number.isNaN(date.getTime())) { return String(value); } return date.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric", }); }; const filteredReports = filterDate ? reports.filter( (report) => getDateValue(getReportDate(report)) === filterDate ) : reports; const clearDateFilter = () => { setFilterDate(""); }; return ( <div className="info-panel"> {/* HEADER */} <div className="info-panel-section"> <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", }} > <div> <h3>Client Care Reports</h3> <p style={{ margin: "5px 0 0", opacity: 0.65, fontSize: "13px", }} > Daily care reports submitted by staff for{" "} {client.fullName}. </p> </div> {!loading && ( <span className="medication-badge"> {filteredReports.length}{" "} {filteredReports.length === 1 ? "report" : "reports"} </span> )} </div> </div> {/* FILTER */} <div className="info-panel-section"> <div className="report-filter" style={{ display: "flex", alignItems: "flex-end", gap: "12px", flexWrap: "wrap", }} > <label> <span>Filter by Date</span> <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} /> </label> {filterDate && ( <button type="button" className="primary-light apply-btn" onClick={clearDateFilter} > Clear Filter </button> )} </div> </div> {/* ERROR */} {error && ( <div className="assign-staff-error"> {error} </div> )} {/* LOADING */} {loading ? ( <div className="coming-soon"> <span className="coming-soon-icon"> <ClipboardList size={20} /> </span> <h3>Loading reports...</h3> <p> Please wait while the client's care reports are loaded. </p> </div> ) : filteredReports.length === 0 ? ( /* EMPTY */ <EmptyState icon={<ClipboardList size={20} />} title={ filterDate ? "No report for this date" : "No reports submitted yet" } desc={ filterDate ? "Try another date or clear the date filter to see all reports." : "Daily care reports submitted by staff for this client will appear here." } /> ) : ( /* REPORT LIST */ <div className="info-panel-section"> <div style={{ display: "flex", flexDirection: "column", gap: "12px", }} > {filteredReports.map((report, index) => { const reportDate = getReportDate(report); const reportId = report._id || report.id || `report-${index}`; const staffName = report.staffName || report.staff?.fullName || report.staff?.name || report.staff?.email || "Staff"; const status = report.status || "Submitted"; return ( <div key={reportId} className="report-card" style={{ padding: "18px", borderRadius: "12px", border: "1px solid var(--border, #e5e7eb)", }} > {/* REPORT HEADER */} <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "15px", flexWrap: "wrap", }} > <div style={{ display: "flex", alignItems: "center", gap: "10px", }} > <span className="report-file-icon"> <FileText size={17} /> </span> <div> <strong> Client Care Report </strong> <small style={{ display: "block", marginTop: "3px", opacity: 0.65, }} > {formatReportDate(reportDate)} </small> </div> </div> <span className={`report-status ${ status.toLowerCase() === "reviewed" ? "reviewed" : status.toLowerCase() === "needs attention" ? "danger" : "submitted" }`} > <i /> {status} </span> </div> {/* SUMMARY */} <div className="info-grid" style={{ marginTop: "18px", }} > <Info icon={<ShieldCheck size={13} />} label="Submitted By" value={staffName} /> <Info icon={<CalendarClock size={13} />} label="Report Date" value={formatReportDate( reportDate )} /> <Info label="Medication" value={report.medication} /> <Info label="Meal" value={report.meal} /> <Info icon={<Clock size={13} />} label="Bath Time" value={formatTime(report.bathTime)} /> <Info icon={<Clock size={13} />} label="Bedtime" value={formatTime(report.bedtime)} /> </div> {/* VIEW BUTTON */} <div style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end", }} > <button type="button" className="primary-light" onClick={() => setSelectedReport(report) } > <FileText size={13} /> View Full Report </button> </div> </div> ); })} </div> </div> )} {/* FULL REPORT MODAL */} {selectedReport && ( <ClientReportModal report={selectedReport} client={client} onClose={() => setSelectedReport(null)} /> )} </div> ); }
-
-function ReportObjectSection({ title, data }) {
-  if (!data || typeof data !== "object") {
-    return null;
+function getDateValue(value) {
+  if (!value) return "";
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
   }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+}
 
-  const entries = Object.entries(data).filter(
-    ([key, value]) =>
-      key !== "_id" &&
-      key !== "__v" &&
-      value !== null &&
-      value !== undefined &&
-      value !== ""
-  );
+function formatReportDate(value) {
+  if (!value) return "—";
+  const ymd = typeof value === "string" ? value.slice(0, 10) : "";
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(ymd)
+    ? new Date(`${ymd}T12:00:00`)
+    : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+function getReportDate(report) {
+  return report?.reportDate || report?.date || report?.createdAt || report?.submittedAt || "";
+}
 
-  if (entries.length === 0) {
-    return null;
-  }
+function getReportAuthor(report) {
+  const name =
+    report?.staffName ||
+    report?.staff?.fullName ||
+    report?.staff?.name ||
+    report?.staff?.email ||
+    "Staff";
+  return report?.submittedByRole === "admin" ? `${name} (Admin)` : name;
+}
+
+function ReportsTab({ client }) {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [filterDate, setFilterDate] = useState("");
+  const [selectedReport, setSelectedReport] = useState(null);
+
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [reportFile, setReportFile] = useState(null);
+  const [draft, setDraft] = useState({
+    reportDate: localToday(),
+    generalNotes: "",
+  });
+
+  const clientId = client?._id || client?.clientId;
+  const API_BASE_URL = (
+    import.meta.env.VITE_API_URL || "http://localhost:5001"
+  ).replace(/\/$/, "");
+  const token = localStorage.getItem("lanbeth-auth-token");
+
+  const loadReports = async () => {
+    if (!clientId || !token) {
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}/reports`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.error || "Failed to load client reports.");
+      }
+
+      const loaded = Array.isArray(result)
+        ? result
+        : Array.isArray(result?.reports)
+        ? result.reports
+        : Array.isArray(result?.data)
+        ? result.data
+        : [];
+      setReports(loaded);
+    } catch (err) {
+      console.error("Load client reports error:", err);
+      setError(err.message || "Unable to load client reports.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReports();
+  }, [clientId]);
+
+  const closeForm = () => {
+    setShowForm(false);
+    setReportFile(null);
+    setFormError("");
+  };
+
+  const submitReport = async (e) => {
+    e.preventDefault();
+    setFormError("");
+
+    if (!draft.generalNotes.trim() && !reportFile) {
+      setFormError("Write the report or attach a file before saving.");
+      return;
+    }
+
+    if (reportFile) {
+      const ok = reportFile.type === "application/pdf" || reportFile.type.startsWith("image/");
+      if (!ok) {
+        setFormError("Only PDF or image files are allowed.");
+        return;
+      }
+      if (reportFile.size > 10 * 1024 * 1024) {
+        setFormError("File must be under 10 MB.");
+        return;
+      }
+    }
+
+    try {
+      setSaving(true);
+
+      const fd = new FormData();
+      fd.append("reportDate", draft.reportDate);
+      fd.append("generalNotes", draft.generalNotes.trim());
+      if (reportFile) fd.append("file", reportFile);
+
+      console.log("SUBMIT REPORT", { clientId, date: draft.reportDate, file: reportFile?.name });
+
+      const response = await fetch(`${API_BASE_URL}/api/clients/${clientId}/reports`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const result = await response.json();
+      console.log("SUBMIT RESULT", { status: response.status, result });
+
+      if (!response.ok) {
+        throw new Error(result?.message || result?.error || "Failed to save report.");
+      }
+
+      setDraft({ reportDate: localToday(), generalNotes: "" });
+      setReportFile(null);
+      setFilterDate("");
+      setShowForm(false);
+      await loadReports();
+    }
+    
+    catch (err) {
+      setFormError(err.message || "Unable to save report.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredReports = filterDate
+    ? reports.filter((r) => getDateValue(getReportDate(r)) === filterDate)
+    : reports;
 
   return (
-    <div className="info-panel-section">
-      <h3>{title}</h3>
+    <div className="info-panel">
+      {/* HEADER */}
+      <div className="info-panel-section">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <h3>Client Care Reports</h3>
+            <p style={{ margin: "5px 0 0", opacity: 0.65, fontSize: "13px" }}>
+              Daily care reports for {client.fullName}.
+            </p>
+          </div>
+          {!loading && (
+            <span className="medication-badge">
+              {filteredReports.length} {filteredReports.length === 1 ? "report" : "reports"}
+            </span>
+          )}
+        </div>
+      </div>
 
-      <div className="info-grid">
-        {entries.map(([key, value]) => {
-          const label = key
-            .replace(/([A-Z])/g, " $1")
-            .replace(/^./, (char) => char.toUpperCase());
+      {/* WRITE REPORT */}
+      <div className="info-panel-section">
+        {!showForm ? (
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              setDraft((d) => ({ ...d, reportDate: localToday() }));
+              setShowForm(true);
+            }}
+          >
+            <FileText size={14} />
+            Write Report
+          </button>
+        ) : (
+          <form onSubmit={submitReport} className="client-document-upload-form">
+            <h3>New Report for {client.fullName}</h3>
 
-          let displayValue = value;
+            <label className="document-form-field">
+              <span>Report Date</span>
+              <input
+                type="date"
+                value={draft.reportDate}
+                onChange={(e) => setDraft((d) => ({ ...d, reportDate: e.target.value }))}
+                disabled={saving}
+              />
+            </label>
 
-          if (key === "date") {
-            displayValue = formatDate(value);
-          } else if (key === "time") {
-            displayValue = formatTime(value);
-          }
+            <label className="document-form-field">
+              <span>Report</span>
+              <textarea
+                rows={6}
+                value={draft.generalNotes}
+                onChange={(e) => setDraft((d) => ({ ...d, generalNotes: e.target.value }))}
+                placeholder="Write the report here..."
+                disabled={saving}
+              />
+            </label>
 
-          return (
-            <Info
-              key={key}
-              label={label}
-              value={displayValue}
+            <label className="document-form-field">
+              <span>Attach PDF or image (optional)</span>
+              <input
+                type="file"
+                accept="application/pdf,image/*"
+                onChange={(e) => setReportFile(e.target.files?.[0] || null)}
+                disabled={saving}
+              />
+            </label>
+
+            {reportFile && (
+              <div className="selected-document-file">
+                <FileText size={15} />
+                <span>{reportFile.name}</span>
+              </div>
+            )}
+
+            {formError && <div className="assign-staff-error">{formError}</div>}
+
+            <div className="confirm-actions">
+              <button type="button" className="outline" onClick={closeForm} disabled={saving}>
+                Cancel
+              </button>
+              <button type="submit" className="primary" disabled={saving}>
+                {saving ? "Saving…" : "Save Report"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+
+      {/* FILTER */}
+      <div className="info-panel-section">
+        <div
+          className="report-filter"
+          style={{ display: "flex", alignItems: "flex-end", gap: "12px", flexWrap: "wrap" }}
+        >
+          <label>
+            <span>Filter by Date</span>
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
             />
-          );
-        })}
+          </label>
+          {filterDate && (
+            <button
+              type="button"
+              className="primary-light apply-btn"
+              onClick={() => setFilterDate("")}
+            >
+              Clear Filter
+            </button>
+          )}
+        </div>
+      </div>
+
+      {error && <div className="assign-staff-error">{error}</div>}
+
+      {/* LIST */}
+      {loading ? (
+        <div className="coming-soon">
+          <span className="coming-soon-icon">
+            <ClipboardList size={20} />
+          </span>
+          <h3>Loading reports...</h3>
+          <p>Please wait while the client's care reports are loaded.</p>
+        </div>
+      ) : filteredReports.length === 0 ? (
+        <EmptyState
+          icon={<ClipboardList size={20} />}
+          title={filterDate ? "No report for this date" : "No reports submitted yet"}
+          desc={
+            filterDate
+              ? "Try another date or clear the date filter to see all reports."
+              : "Daily care reports for this client will appear here."
+          }
+        />
+      ) : (
+        <div className="info-panel-section">
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {filteredReports.map((report, index) => {
+              const reportDate = getReportDate(report);
+              const reportId = report._id || report.id || `report-${index}`;
+              const status = report.status || "Submitted";
+
+              return (
+                <div
+                  key={reportId}
+                  className="report-card"
+                  style={{
+                    padding: "18px",
+                    borderRadius: "12px",
+                    border: "1px solid var(--border, #e5e7eb)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: "15px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <span className="report-file-icon">
+                        <FileText size={17} />
+                      </span>
+                      <div>
+                        <strong>Client Care Report</strong>
+                        <small style={{ display: "block", marginTop: "3px", opacity: 0.65 }}>
+                          {formatReportDate(reportDate)}
+                        </small>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`report-status ${
+                        status.toLowerCase() === "reviewed"
+                          ? "reviewed"
+                          : status.toLowerCase() === "needs attention"
+                          ? "danger"
+                          : "submitted"
+                      }`}
+                    >
+                      <i />
+                      {status}
+                    </span>
+                  </div>
+
+                  <div className="info-grid" style={{ marginTop: "18px" }}>
+                    <Info
+                      icon={<ShieldCheck size={13} />}
+                      label="Submitted By"
+                      value={getReportAuthor(report)}
+                    />
+                    <Info
+                      icon={<CalendarClock size={13} />}
+                      label="Report Date"
+                      value={formatReportDate(reportDate)}
+                    />
+                    <Info label="Notes" value={report.generalNotes} wide />
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: "16px",
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      gap: "8px",
+                    }}
+                  >
+                    {report.uploadedReportFile?.fileUrl && (
+                      <a
+                        href={report.uploadedReportFile.fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="primary-light"
+                      >
+                        <Download size={13} />
+                        Attachment
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      className="primary-light"
+                      onClick={() => setSelectedReport(report)}
+                    >
+                      <FileText size={13} />
+                      View Full Report
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {selectedReport && (
+        <ClientReportModal
+          report={selectedReport}
+          client={client}
+          onClose={() => setSelectedReport(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ClientReportModal({ report, client, onClose }) {
+  const reportDate = getReportDate(report);
+  const status = report?.status || "Submitted";
+
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="modal"
+        style={{ maxWidth: "900px", width: "95%", maxHeight: "90vh", overflow: "auto" }}
+      >
+        <div className="modal-head">
+          <div>
+            <span className="eyebrow">CLIENT CARE REPORT</span>
+            <h2>{client.fullName}</h2>
+            <p style={{ margin: "4px 0 0", opacity: 0.65 }}>{formatReportDate(reportDate)}</p>
+          </div>
+          <button className="icon-btn" onClick={onClose} type="button">
+            ×
+          </button>
+        </div>
+
+        <div className="modal-body">
+          <div className="info-panel-section">
+            <h3>Report Information</h3>
+            <div className="info-grid">
+              <Info label="Client" value={client.fullName} />
+              <Info label="Client ID" value={client.clientId} />
+              <Info label="Report Date" value={formatReportDate(reportDate)} />
+              <Info
+                icon={<ShieldCheck size={13} />}
+                label="Submitted By"
+                value={getReportAuthor(report)}
+              />
+              <Info label="Status" value={status} />
+              <Info label="Report ID" value={report._id || report.id} />
+            </div>
+          </div>
+
+          <div className="info-panel-section">
+            <h3>Daily Care</h3>
+            <div className="info-grid">
+              <Info label="Medication" value={report.medication} />
+              <Info label="Meal" value={report.meal} />
+              <Info icon={<Clock size={13} />} label="Bath Time" value={formatTime(report.bathTime)} />
+              <Info icon={<Clock size={13} />} label="Bedtime" value={formatTime(report.bedtime)} />
+              <Info label="Temperature" value={report.temperature} />
+              <Info label="Blood Pressure" value={report.bloodPressure} />
+              <Info label="Cleaning Done" value={report.cleaningDone} />
+              <Info label="Bedroom Check" value={report.bedroomCheck} />
+              <Info label="Finances" value={report.finances} />
+              <Info label="Keywork Session" value={report.keyworkSession} />
+              <Info label="Case Note" value={report.caseNote} />
+              <Info label="Fridge / Freezer Temperature" value={report.fridgeFreezerTemp} />
+            </div>
+          </div>
+
+          <div className="info-panel-section">
+            <h3>Notes & Observations</h3>
+            <div className="info-grid">
+              <Info label="Incident" value={report.incident} wide />
+              <Info label="Behaviour" value={report.behaviour} wide />
+              <Info label="Comfort Check" value={report.comfort} wide />
+              <Info label="Blood Test" value={report.bloodTest} wide />
+              <Info label="General Notes" value={report.generalNotes} wide />
+            </div>
+          </div>
+
+          {report.uploadedReportFile?.fileUrl && (
+            <div className="info-panel-section">
+              <h3>Attached Document</h3>
+              <a
+                href={report.uploadedReportFile.fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="primary-light"
+              >
+                <FileText size={13} />
+                {report.uploadedReportFile.fileName || "View attachment"}
+              </a>
+            </div>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "20px" }}>
+            <button type="button" className="outline" onClick={onClose}>
+              Close
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-function ClientReportModal({ report, client, onClose }) { const reportDate = report?.reportDate || report?.date || report?.createdAt || report?.submittedAt; const staffName = report?.staffName || report?.staff?.fullName || report?.staff?.name || report?.staff?.email || "Staff"; const status = report?.status || "Submitted"; const formatReportDate = (value) => { if (!value) return "—"; const date = new Date(value); if (Number.isNaN(date.getTime())) { return String(value); } return date.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric", }); }; return ( <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) { onClose(); } }} > <div className="modal" style={{ maxWidth: "900px", width: "95%", maxHeight: "90vh", overflow: "auto", }} > <div className="modal-head"> <div> <span className="eyebrow"> CLIENT CARE REPORT </span> <h2>{client.fullName}</h2> <p style={{ margin: "4px 0 0", opacity: 0.65, }} > {formatReportDate(reportDate)} </p> </div> <button className="icon-btn" onClick={onClose} type="button" > × </button> </div> <div className="modal-body"> {/* REPORT INFORMATION */} <div className="info-panel-section"> <h3>Report Information</h3> <div className="info-grid"> <Info label="Client" value={client.fullName} /> <Info label="Client ID" value={client.clientId} /> <Info label="Report Date" value={formatReportDate(reportDate)} /> <Info icon={<ShieldCheck size={13} />} label="Submitted By" value={staffName} /> <Info label="Status" value={status} /> <Info label="Report ID" value={report._id || report.id} /> </div> </div> {/* DAILY CARE */} <div className="info-panel-section"> <h3>Daily Care</h3> <div className="info-grid"> <Info label="Medication" value={report.medication} /> <Info label="Meal" value={report.meal} /> <Info icon={<Clock size={13} />} label="Bath Time" value={formatTime(report.bathTime)} /> <Info icon={<Clock size={13} />} label="Bedtime" value={formatTime(report.bedtime)} /> <Info label="Temperature" value={report.temperature} /> <Info label="Blood Pressure" value={report.bloodPressure} /> <Info label="Cleaning Done" value={report.cleaningDone} /> <Info label="Bedroom Check" value={report.bedroomCheck} /> <Info label="Finances" value={report.finances} /> <Info label="Keywork Session" value={report.keyworkSession} /> <Info label="Case Note" value={report.caseNote} /> <Info label="Fridge / Freezer Temperature" value={report.fridgeFreezerTemp} /> </div> </div> {/* NOTES */} <div className="info-panel-section"> <h3>Notes & Observations</h3> <div className="info-grid"> <Info label="Incident" value={report.incident} wide /> <Info label="Behaviour" value={report.behaviour} wide /> <Info label="Comfort Check" value={report.comfort} wide /> <Info label="Blood Test" value={report.bloodTest} wide /> <Info label="General Notes" value={report.generalNotes} wide /> <Info label="Comments" value={report.comments} wide /> </div> </div> {/* OTHER REPORT DATA */} {report.uploadUrl && ( <div className="info-panel-section"> <h3>Uploaded Report</h3> <a href={report.uploadUrl} target="_blank" rel="noreferrer" className="primary-light" > <FileText size={13} /> View Uploaded Report </a> </div> )} {report.downloadUrl && ( <div className="info-panel-section"> <a href={report.downloadUrl} download className="primary-light" > <Download size={13} /> Download Report </a> </div> )} <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "20px", }} > <button type="button" className="outline" onClick={onClose} > Close </button> </div> </div> </div> </div> ); }
-
 
 function EmptyState({ icon, title, desc }) {
   return (

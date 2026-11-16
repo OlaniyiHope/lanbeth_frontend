@@ -135,9 +135,7 @@ export default function Dashboard() {
         </div>
 
         <div className="head-actions">
-          <button className="icon-btn">
-            🔔
-          </button>
+          
 
           <button
             className="outline small"

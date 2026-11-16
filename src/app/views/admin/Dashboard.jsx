@@ -754,17 +754,7 @@ const loadExpiryDocuments = async () => {
             />
           </button>
 
-          <button
-            className="icon-btn"
-            title="Notifications"
-            onClick={() =>
-              window.alert(
-                "Notifications will be connected to the notification API."
-              )
-            }
-          >
-            <span>🔔</span>
-          </button>
+         
 
         </div>
       </div>

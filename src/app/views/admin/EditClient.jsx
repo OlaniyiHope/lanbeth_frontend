@@ -297,10 +297,11 @@ function EditClient() {
       medications: medications
         .filter((m) => m.name.trim())
         .map(({ id, ...rest }) => rest),
-      documents: [
-        ...documents.map(({ fileName, fileUrl }) => ({ fileName, fileUrl })),
-        ...newDocuments.map((d) => ({ fileName: d.name, fileUrl: d.url })),
-      ],
+      // documents: [
+      //   ...documents.map(({ fileName, fileUrl }) => ({ fileName, fileUrl })),
+      //   ...newDocuments.map((d) => ({ fileName: d.name, fileUrl: d.url })),
+      // ],
+           documents: [...documents],
     };
 
     try {

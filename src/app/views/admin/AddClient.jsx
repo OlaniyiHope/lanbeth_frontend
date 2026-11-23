@@ -12,13 +12,17 @@ import {
   Trash2,
   Camera,
   ClipboardPlus,
+  ClipboardList,
   Landmark,
   Pill,
   Stethoscope
 } from "lucide-react";
 import { useData } from "../../../context/DataContext.jsx";
 import "./AddClient.css";
-
+import {
+  SEXUALITY_OPTIONS, DNAR_OPTIONS, OXYGEN_OPTIONS,
+  TEAM_INVOLVEMENT_OPTIONS, DOCUMENT_VIEWERS, emptyAdmission,
+} from "./clientFormOptions.js";
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Tea", "Supper"];
 const WEEKDAYS = [
   "Monday",
@@ -161,12 +165,41 @@ const ACTIVITIES = [
   "Other",
 ];  
 
+// const emptyClient = {
+//   name: "",
+//   email: "",
+//   phone: "",
+//   keySafeCode: "",
+//    localAuthorityNo: "", 
+//   dateOfBirth: "",
+//   address: "",
+//   postCode: "",
+//   region: "",
+//   maritalStatus: "",
+//   religion: "",
+//   ethnicity: "",
+//   sex: "",
+//   communicationPreference: "",
+//   otherLanguage: "",
+//   familyMemberName: "",
+//   relationship: "",
+//   nextOfKinName: "",
+//   nextOfKinPhone: "",
+//    councilServiceUserId: "",
+//   councilCareProviderId: "",
+//   serviceType: "",
+//   serviceLevel: "",
+//   medicalHistory: "",
+//   allergies: "",
+//   favouriteActivities: "",
+//   dailyCare: { bedtime: "", bathTime: "" },
+// };
 const emptyClient = {
   name: "",
   email: "",
   phone: "",
   keySafeCode: "",
-   localAuthorityNo: "", 
+  localAuthorityNo: "",
   dateOfBirth: "",
   address: "",
   postCode: "",
@@ -175,22 +208,30 @@ const emptyClient = {
   religion: "",
   ethnicity: "",
   sex: "",
-  communicationPreference: "",
-  otherLanguage: "",
+  pronouns: "",
+  sexuality: "",
+  nhsNumber: "",
+  chiNumber: "",
+  niNumber: "",
   familyMemberName: "",
   relationship: "",
   nextOfKinName: "",
   nextOfKinPhone: "",
-   councilServiceUserId: "",
+  emergencyEmails: [""],
+  emergencyAddresses: [""],
+  councilServiceUserId: "",
   councilCareProviderId: "",
   serviceType: "",
   serviceLevel: "",
   medicalHistory: "",
   allergies: "",
+  dnar: "",
+  oxygen: "",
+  onCatheter: "No",
+  teamInvolvement: [],
   favouriteActivities: "",
   dailyCare: { bedtime: "", bathTime: "" },
 };
-
 function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -217,7 +258,14 @@ const [records, setRecords] = useState([]);
 const [activities, setActivities] = useState([]);
 const [showOtherActivity, setShowOtherActivity] = useState(false);
 const [otherActivity, setOtherActivity] = useState("");
+const [languages, setLanguages] = useState([{ id: makeId(), value: "", other: "" }]);
 
+const updateLanguage = (id, field, value) =>
+  setLanguages((list) => list.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
+const addLanguage = () =>
+  setLanguages((list) => [...list, { id: makeId(), value: "", other: "" }]);
+const removeLanguage = (id) =>
+  setLanguages((list) => list.filter((l) => l.id !== id));
 const addActivity = (value) => {
   if (!value) return;
   if (value === "Other") {
@@ -226,7 +274,22 @@ const addActivity = (value) => {
   }
   setActivities((a) => (a.includes(value) ? a : [...a, value]));
 };
+const [admission, setAdmission] = useState(emptyAdmission);
 
+const updateAdmission = (field, value) =>
+  setAdmission((a) => ({ ...a, [field]: value }));
+const addAdmissionField = () =>
+  setAdmission((a) => ({
+    ...a,
+    extraFields: [...(a.extraFields || []), { id: makeId(), label: "", value: "" }],
+  }));
+const updateAdmissionField = (id, field, value) =>
+  setAdmission((a) => ({
+    ...a,
+    extraFields: a.extraFields.map((f) => (f.id === id ? { ...f, [field]: value } : f)),
+  }));
+const removeAdmissionField = (id) =>
+  setAdmission((a) => ({ ...a, extraFields: a.extraFields.filter((f) => f.id !== id) }));
 const addOtherActivity = () => {
   const value = otherActivity.trim();
   if (!value) return;
@@ -240,7 +303,7 @@ const removeActivity = (value) =>
 const addRecord = () =>
   setRecords((r) => [
     ...r,
-    { id: makeId(), type: "", dateOfAssessment: "", expiryDate: "", file: null },
+    { id: makeId(), type: "", dateOfAssessment: "",  file: null },
   ]);
 
 const updateRecord = (id, field, value) =>
@@ -260,15 +323,25 @@ const handlePhoto = async (file) => {
     setError("Could not read that image. Try another one.");
   }
 };
-  const [professionals, setProfessionals] = useState(() =>
-  Object.fromEntries(
-    PROFESSIONAL_TYPES.map((t) => [t, { ...emptyProfessional }])
-  )
-);
+//   const [professionals, setProfessionals] = useState(() =>
+//   Object.fromEntries(
+//     PROFESSIONAL_TYPES.map((t) => [t, { ...emptyProfessional }])
+//   )
+// );
+const [professionals, setProfessionals] = useState([]);
 
-const updateProfessional = (type, field, value) => {
-  setProfessionals((p) => ({ ...p, [type]: { ...p[type], [field]: value } }));
-};
+const addProfessional = () =>
+  setProfessionals((p) => [
+    ...p,
+    { id: makeId(), role: "", name: "", phone: "", email: "", address: "", postCode: "", registeredDate: "" },
+  ]);
+const updateProfessional = (id, field, value) =>
+  setProfessionals((p) => p.map((x) => (x.id === id ? { ...x, [field]: value } : x)));
+const removeProfessional = (id) =>
+  setProfessionals((p) => p.filter((x) => x.id !== id));
+// const updateProfessional = (type, field, value) => {
+//   setProfessionals((p) => ({ ...p, [type]: { ...p[type], [field]: value } }));
+// };
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -279,20 +352,33 @@ const updateProfessional = (type, field, value) => {
   const updateNested = (section, field, value) => {
     setValues((v) => ({ ...v, [section]: { ...v[section], [field]: value } }));
   };
-
+const toggleDocViewer = (docId, role) =>
+  setDocuments((docs) =>
+    docs.map((d) =>
+      d.id !== docId
+        ? d
+        : {
+            ...d,
+            visibleTo: d.visibleTo.includes(role)
+              ? d.visibleTo.filter((r) => r !== role)
+              : [...d.visibleTo, role],
+          }
+    )
+  );
   // ---------- Documents ----------
 const handleFiles = (fileList) => {
   const files = Array.from(fileList || []);
   if (!files.length) return;
-  const next = files.map((file) => ({
-    id: makeId(),
-    file,                                        // keep the real File for upload
-    name: file.name,
-    url: URL.createObjectURL(file),
-    title: file.name.replace(/\.[^/.]+$/, ""),   // default title = file name without extension
-    documentType: "Other",
-    uploadedAt: todayISO(),                      // date uploaded
-  }));
+const next = files.map((file) => ({
+  id: makeId(),
+  file,
+  name: file.name,
+  url: URL.createObjectURL(file),
+  title: file.name.replace(/\.[^/.]+$/, ""),
+  documentType: "Other",
+  uploadedAt: todayISO(),
+  visibleTo: DOCUMENT_VIEWERS.map((v) => v.value),
+}));
   setDocuments((docs) => [...docs, ...next]);
 };
 
@@ -339,6 +425,13 @@ const updateDocument = (id, field, value) =>
   const removeMeal = (id) => {
     setMeals((m) => m.filter((meal) => meal.id !== id));
   };
+
+  const updateListItem = (key, index, value) =>
+  setValues((v) => ({ ...v, [key]: v[key].map((x, i) => (i === index ? value : x)) }));
+const addListItem = (key) =>
+  setValues((v) => ({ ...v, [key]: [...v[key], ""] }));
+const removeListItem = (key, index) =>
+  setValues((v) => ({ ...v, [key]: v[key].filter((_, i) => i !== index) }));
 function resizeImage(file, max = 256) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -369,23 +462,21 @@ function resizeImage(file, max = 256) {
       setError("Next of kin name and phone number are required.");
       return;
     }
-    if (!values.communicationPreference) {
-  setError("Language preference is required.");
-  return;
-}
-if (values.communicationPreference === "Other" && !values.otherLanguage.trim()) {
-  setError("Please specify the client's language.");
-  return;
-}
+  // NEW: replaces the two old language checks
+  const languageList = languages
+    .map((l) => (l.value === "Other" ? l.other.trim() : l.value))
+    .filter(Boolean);
+  if (!languageList.length) {
+    setError("At least one language is required.");
+    return;
+  }
+
 for (const rec of records) {
   if (!rec.type || !rec.dateOfAssessment || !rec.file) {
     setError("Each medical record needs a type, a date of assessment and a file.");
     return;
   }
-  if (rec.expiryDate && rec.expiryDate < rec.dateOfAssessment) {
-    setError("A record's expiry date cannot be before its assessment date.");
-    return;
-  }
+
 }
 for (const doc of documents) {
   if (!doc.title.trim()) {
@@ -395,59 +486,130 @@ for (const doc of documents) {
 }
     setError("");
 
-    const payload = {
-      fullName: values.name,
-      email: values.email,
-      phone: values.phone,
-      keySafeCode: values.keySafeCode,
-      localAuthorityNo: values.localAuthorityNo.trim() || undefined,
-      dateOfBirth: values.dateOfBirth || undefined,
-      address: values.address,
-      postCode: values.postCode,
-      region: values.region,
-      maritalStatus: values.maritalStatus,
-      councilServiceUserId: values.councilServiceUserId.trim() || undefined,
-councilCareProviderId: values.councilCareProviderId.trim() || undefined,
-serviceType: values.serviceType.trim() || undefined,
-serviceLevel: values.serviceLevel.trim() || undefined,
-      profilePhoto: photo || undefined,
-      religion: values.religion,
-      ethnicity: values.ethnicity || undefined,
-      gender: values.sex === "Other" ? undefined : values.sex,
-communicationPreference:
-  values.communicationPreference === "Other"
-    ? values.otherLanguage
-    : values.communicationPreference,
-      medicalHistory: values.medicalHistory,
-      allergies: values.allergies,
-      favoriteActivities: activities.join(", "),
-      dailyCare: values.dailyCare,
-      emergencyContact: {
-        familyMemberName: values.familyMemberName,
-        relationship: values.relationship,
-        nextOfKinName: values.nextOfKinName,
-        nextOfKinPhone: values.nextOfKinPhone,
-      },
-      professionals: PROFESSIONAL_TYPES
-  .filter((t) => professionals[t].name.trim())
-  .map((t) => ({
-    role: t,
-    ...professionals[t],
-    registeredDate: professionals[t].registeredDate || undefined,
-  })),
-      foodIntake: meals
-        .filter((m) => m.type)
-        .map(({ id, type, description, time, day }) => ({
-          mealType: type,
-          mealDescription: description,
-          mealTime: time,
-          mealDay: day,
-        })),
-      medications: medications
-        .filter((m) => m.name.trim())
-        .map(({ id, ...rest }) => rest),
-    };
-
+//     const payload = {
+//       fullName: values.name,
+//       email: values.email,
+//       phone: values.phone,
+//       keySafeCode: values.keySafeCode,
+//       localAuthorityNo: values.localAuthorityNo.trim() || undefined,
+//       dateOfBirth: values.dateOfBirth || undefined,
+//       address: values.address,
+//       postCode: values.postCode,
+//       region: values.region,
+//       maritalStatus: values.maritalStatus,
+//       councilServiceUserId: values.councilServiceUserId.trim() || undefined,
+// councilCareProviderId: values.councilCareProviderId.trim() || undefined,
+// serviceType: values.serviceType.trim() || undefined,
+// serviceLevel: values.serviceLevel.trim() || undefined,
+//       profilePhoto: photo || undefined,
+//       religion: values.religion,
+//       pronouns: values.pronouns,
+//       ethnicity: values.ethnicity || undefined,
+//       gender: values.sex === "Other" ? undefined : values.sex,
+// communicationPreference:
+//   values.communicationPreference === "Other"
+//     ? values.otherLanguage
+//     : values.communicationPreference,
+//       medicalHistory: values.medicalHistory,
+//       allergies: values.allergies,
+//       favoriteActivities: activities.join(", "),
+//       dailyCare: values.dailyCare,
+//       emergencyContact: {
+//         familyMemberName: values.familyMemberName,
+//         relationship: values.relationship,
+//         nextOfKinName: values.nextOfKinName,
+//         nextOfKinPhone: values.nextOfKinPhone,
+//       },
+//   //     professionals: PROFESSIONAL_TYPES
+//   // .filter((t) => professionals[t].name.trim())
+//   // .map((t) => ({
+//   //   role: t,
+//   //   ...professionals[t],
+//   //   registeredDate: professionals[t].registeredDate || undefined,
+//   // })),
+//   professionals: professionals
+//   .filter((p) => p.role && p.name.trim())
+//   .map(({ id, ...rest }) => ({
+//     ...rest,
+//     registeredDate: rest.registeredDate || undefined,
+//   })),
+//       foodIntake: meals
+//         .filter((m) => m.type)
+//         .map(({ id, type, description, time, day }) => ({
+//           mealType: type,
+//           mealDescription: description,
+//           mealTime: time,
+//           mealDay: day,
+//         })),
+//       medications: medications
+//         .filter((m) => m.name.trim())
+//         .map(({ id, ...rest }) => rest),
+//     };
+const payload = {
+  fullName: values.name,
+  email: values.email,
+  phone: values.phone,
+  keySafeCode: values.keySafeCode,
+  localAuthorityNo: values.localAuthorityNo.trim() || undefined,
+  dateOfBirth: values.dateOfBirth || undefined,
+  address: values.address,
+  postCode: values.postCode,
+  region: values.region,
+  maritalStatus: values.maritalStatus,
+  religion: values.religion,
+  ethnicity: values.ethnicity || undefined,
+  gender: values.sex === "Other" ? undefined : values.sex,
+  pronouns: values.pronouns || undefined,
+  sexuality: values.sexuality || undefined,
+  dnar: values.dnar || undefined,
+  nhsNumber: values.nhsNumber.trim() || undefined,
+  chiNumber: values.chiNumber.trim() || undefined,
+  niNumber: values.niNumber.trim() || undefined,
+  languages: languageList,
+  communicationPreference: languageList[0],
+  councilServiceUserId: values.councilServiceUserId.trim() || undefined,
+  councilCareProviderId: values.councilCareProviderId.trim() || undefined,
+  serviceType: values.serviceType.trim() || undefined,
+  serviceLevel: values.serviceLevel.trim() || undefined,
+  profilePhoto: photo || undefined,
+  medicalHistory: values.medicalHistory,
+  allergies: values.allergies,
+  favoriteActivities: values.favouriteActivities,
+  medicalHealth: {
+    oxygen: values.oxygen,
+    onCatheter: values.onCatheter === "Yes",
+    teamInvolvement: values.teamInvolvement,
+  },
+  admission: {
+    ...admission,
+    extraFields: (admission.extraFields || [])
+      .filter((f) => f.label.trim())
+      .map(({ label, value }) => ({ label, value })),
+  },
+  dailyCare: values.dailyCare,
+  emergencyContact: {
+    familyMemberName: values.familyMemberName,
+    relationship: values.relationship,
+    nextOfKinName: values.nextOfKinName,
+    nextOfKinPhone: values.nextOfKinPhone,
+    emails: values.emergencyEmails.filter((e) => e.trim()),
+    addresses: values.emergencyAddresses.filter((a) => a.trim()),
+  },
+  professionals: professionals
+    .filter((p) => p.role && p.name.trim())
+    .map(({ id, ...rest }) => ({ ...rest, registeredDate: rest.registeredDate || undefined })),
+  foodIntake: meals
+    .filter((m) => m.type)
+    .map(({ id, type, description, time, day }) => ({
+      mealType: type,
+      mealDescription: description,
+      mealTime: time,
+      mealDay: day,
+    })),
+  medications: medications
+    .filter((m) => m.name.trim())
+    .map(({ id, ...rest }) => rest),
+};
 try {
   setSubmitting(true);
   const created = await createClient(payload);
@@ -462,7 +624,7 @@ try {
       fd.append("documentType", "Medical Record");
       fd.append("title", rec.type);
       fd.append("dateOfAssessment", rec.dateOfAssessment);
-      if (rec.expiryDate) fd.append("expiryDate", rec.expiryDate);
+    
       fd.append("file", rec.file);
 
       const res = await fetch(`${base}/api/clients/${created._id}/documents`, {
@@ -482,7 +644,7 @@ for (const doc of documents) {
     fd.append("title", doc.title.trim());
     fd.append("uploadedAt", doc.uploadedAt);
     fd.append("file", doc.file);
-
+fd.append("visibleTo", JSON.stringify(doc.visibleTo));
     const res = await fetch(`${base}/api/clients/${created._id}/documents`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
@@ -613,6 +775,31 @@ for (const doc of documents) {
                 <option value="Other">Other</option>
               </select>
             </Field>
+            <Field label="Pronouns">
+  <select value={values.pronouns} onChange={(e) => update("pronouns", e.target.value)}>
+    <option value="">Select...</option>
+    <option value="He">He</option>
+    <option value="She">She</option>
+    <option value="They">They</option>
+  </select>
+</Field>
+<Field label="Sexuality">
+  <select value={values.sexuality} onChange={(e) => update("sexuality", e.target.value)}>
+    <option value="">Select...</option>
+    {SEXUALITY_OPTIONS.map((s) => (
+      <option key={s}>{s}</option>
+    ))}
+  </select>
+</Field>
+<Field label="NHS/HSC No">
+  <input value={values.nhsNumber} onChange={(e) => update("nhsNumber", e.target.value)} />
+</Field>
+<Field label="CHI Number">
+  <input value={values.chiNumber} onChange={(e) => update("chiNumber", e.target.value)} />
+</Field>
+<Field label="NI No">
+  <input value={values.niNumber} onChange={(e) => update("niNumber", e.target.value)} />
+</Field>
             <Field label="Address" wide required>
               <input
                 value={values.address}
@@ -663,7 +850,7 @@ for (const doc of documents) {
                 ))}
               </select>
             </Field>
-       <Field label="Language Preference" required>
+       {/* <Field label="Language Preference" required>
   <select
     value={values.communicationPreference}
     onChange={(e) => update("communicationPreference", e.target.value)}
@@ -675,17 +862,34 @@ for (const doc of documents) {
       </option>
     ))}
   </select>
-</Field>
+</Field> */}
+<div className="form-subhead" style={{ gridColumn: "1 / -1" }}>Language Preference</div>
+{languages.map((l, i) => (
+  <div className="form-grid" key={l.id} style={{ gridColumn: "1 / -1" }}>
+    <Field label={i === 0 ? "Language" : `Language ${i + 1}`} required={i === 0}>
+      <select value={l.value} onChange={(e) => updateLanguage(l.id, "value", e.target.value)}>
+        <option value="">Select...</option>
+        {LANGUAGES.map((lang) => (
+          <option key={lang}>{lang}</option>
+        ))}
+      </select>
+    </Field>
+    {l.value === "Other" && (
+      <Field label="Specify Language">
+        <input value={l.other} onChange={(e) => updateLanguage(l.id, "other", e.target.value)} />
+      </Field>
+    )}
+    {languages.length > 1 && (
+      <button type="button" className="medication-remove" onClick={() => removeLanguage(l.id)}>
+        <Trash2 size={13} /> Remove
+      </button>
+    )}
+  </div>
+))}
+<button type="button" className="outline small" onClick={addLanguage}>
+  <Plus size={14} /> Add Language
+</button>
 
-{values.communicationPreference === "Other" && (
-  <Field label="Specify Language" required>
-    <input
-      value={values.otherLanguage}
-      onChange={(e) => update("otherLanguage", e.target.value)}
-      placeholder="e.g. Tamil"
-    />
-  </Field>
-)}
           </div>
         </FormSection>
 
@@ -695,7 +899,7 @@ for (const doc of documents) {
           desc="Who to reach in the event of an emergency."
         >
           <div className="form-grid">
-            <Field label="Family Member Name">
+            <Field label="Name">
               <input
                 value={values.familyMemberName}
                 onChange={(e) => update("familyMemberName", e.target.value)}
@@ -721,6 +925,37 @@ for (const doc of documents) {
                 placeholder="+44 7700 987654"
               />
             </Field>
+            {values.emergencyAddresses.map((addr, i) => (
+  <Field key={`addr-${i}`} label={i === 0 ? "Address" : `Address ${i + 1}`} wide>
+    <div style={{ display: "flex", gap: 8 }}>
+      <input value={addr} onChange={(e) => updateListItem("emergencyAddresses", i, e.target.value)} />
+      {i > 0 && (
+        <button type="button" className="medication-remove" onClick={() => removeListItem("emergencyAddresses", i)}>
+          <Trash2 size={13} />
+        </button>
+      )}
+    </div>
+  </Field>
+))}
+<button type="button" className="outline small" onClick={() => addListItem("emergencyAddresses")}>
+  <Plus size={14} /> Add Address
+</button>
+
+{values.emergencyEmails.map((mail, i) => (
+  <Field key={`mail-${i}`} label={i === 0 ? "Email" : `Email ${i + 1}`} wide>
+    <div style={{ display: "flex", gap: 8 }}>
+      <input type="email" value={mail} onChange={(e) => updateListItem("emergencyEmails", i, e.target.value)} />
+      {i > 0 && (
+        <button type="button" className="medication-remove" onClick={() => removeListItem("emergencyEmails", i)}>
+          <Trash2 size={13} />
+        </button>
+      )}
+    </div>
+  </Field>
+))}
+<button type="button" className="outline small" onClick={() => addListItem("emergencyEmails")}>
+  <Plus size={14} /> Add Email
+</button>
           </div>
         </FormSection>
         <FormSection
@@ -759,7 +994,7 @@ for (const doc of documents) {
     </Field>
   </div>
 </FormSection>
-<FormSection
+{/* <FormSection
   icon={<Stethoscope size={16} />}
   title="Professionals Around the Individual"
   desc="Details of the professionals involved in this client's care. Leave blank any that don't apply."
@@ -828,6 +1063,104 @@ for (const doc of documents) {
       </div>
     );
   })}
+</FormSection> */}
+<FormSection
+  icon={<Stethoscope size={16} />}
+  title="Professionals Around the Individual"
+  desc="Add each professional involved in this client's care."
+>
+  {professionals.length === 0 && (
+    <p className="section-empty">No professionals added yet.</p>
+  )}
+
+  {professionals.map((p) => (
+    <div className="medication-row" key={p.id}>
+      <div className="form-grid">
+        <Field label="Type" required>
+          <select value={p.role} onChange={(e) => updateProfessional(p.id, "role", e.target.value)}>
+            <option value="">Select...</option>
+            {PROFESSIONAL_TYPES.map((t) => (
+              <option key={t}>{t}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Name">
+          <input value={p.name} onChange={(e) => updateProfessional(p.id, "name", e.target.value)} />
+        </Field>
+        <Field label="Phone">
+          <input value={p.phone} onChange={(e) => updateProfessional(p.id, "phone", e.target.value)} />
+        </Field>
+        <Field label="Email">
+          <input type="email" value={p.email} onChange={(e) => updateProfessional(p.id, "email", e.target.value)} />
+        </Field>
+        <Field label="Post Code">
+          <input value={p.postCode} onChange={(e) => updateProfessional(p.id, "postCode", e.target.value)} />
+        </Field>
+        <Field label="Address" wide>
+          <input value={p.address} onChange={(e) => updateProfessional(p.id, "address", e.target.value)} />
+        </Field>
+        {REGISTERED_TYPES.includes(p.role) && (
+          <Field label="Registered Date">
+            <input type="date" value={p.registeredDate} onChange={(e) => updateProfessional(p.id, "registeredDate", e.target.value)} />
+          </Field>
+        )}
+      </div>
+      <button type="button" className="medication-remove" onClick={() => removeProfessional(p.id)}>
+        <Trash2 size={13} /> Remove
+      </button>
+    </div>
+  ))}
+
+  <button type="button" className="outline small" onClick={addProfessional}>
+    <Plus size={14} /> Add Professional
+  </button>
+</FormSection>
+<FormSection
+  icon={<ClipboardList size={16} />}
+  title="Admission"
+  desc="Admission details. Use Add Field to record anything else."
+>
+  <div className="form-grid">
+    <Field label="Start Date">
+      <input type="date" value={admission.startDate} onChange={(e) => updateAdmission("startDate", e.target.value)} />
+    </Field>
+    <Field label="Banding">
+      <input value={admission.banding} onChange={(e) => updateAdmission("banding", e.target.value)} />
+    </Field>
+    <Field label="Authority / Category">
+      <input value={admission.authorityCategory} onChange={(e) => updateAdmission("authorityCategory", e.target.value)} />
+    </Field>
+    <Field label="Funeral Arrangements">
+      <input value={admission.funeralArrangements} onChange={(e) => updateAdmission("funeralArrangements", e.target.value)} />
+    </Field>
+    <Field label="Funeral Director">
+      <input value={admission.funeralDirector} onChange={(e) => updateAdmission("funeralDirector", e.target.value)} />
+    </Field>
+    <Field label="Team">
+      <input value={admission.team} onChange={(e) => updateAdmission("team", e.target.value)} />
+    </Field>
+    <Field label="Default Shift Run">
+      <input value={admission.defaultShiftRun} onChange={(e) => updateAdmission("defaultShiftRun", e.target.value)} />
+    </Field>
+  </div>
+
+  {(admission.extraFields || []).map((f) => (
+    <div className="form-grid" key={f.id} style={{ marginTop: 12 }}>
+      <Field label="Field Name">
+        <input value={f.label} onChange={(e) => updateAdmissionField(f.id, "label", e.target.value)} />
+      </Field>
+      <Field label="Value">
+        <input value={f.value} onChange={(e) => updateAdmissionField(f.id, "value", e.target.value)} />
+      </Field>
+      <button type="button" className="medication-remove" onClick={() => removeAdmissionField(f.id)}>
+        <Trash2 size={13} /> Remove
+      </button>
+    </div>
+  ))}
+
+  <button type="button" className="outline small" onClick={addAdmissionField} style={{ marginTop: 12 }}>
+    <Plus size={14} /> Add Field
+  </button>
 </FormSection>
         <FormSection
           icon={<HeartPulse size={16} />}
@@ -850,12 +1183,56 @@ for (const doc of documents) {
                 placeholder="e.g. Penicillin, Peanuts"
               />
             </Field>
+            <Field label="DNAR / Respect">
+  <select value={values.dnar} onChange={(e) => update("dnar", e.target.value)}>
+    <option value="">Select...</option>
+    {DNAR_OPTIONS.map((d) => (
+      <option key={d}>{d}</option>
+    ))}
+  </select>
+</Field>
+<Field label="Oxygen">
+  <select value={values.oxygen} onChange={(e) => update("oxygen", e.target.value)}>
+    <option value="">Select...</option>
+    {OXYGEN_OPTIONS.map((o) => (
+      <option key={o}>{o}</option>
+    ))}
+  </select>
+</Field>
+<Field label="On Catheter">
+  <select value={values.onCatheter} onChange={(e) => update("onCatheter", e.target.value)}>
+    <option value="No">No</option>
+    <option value="Yes">Yes</option>
+  </select>
+</Field>
+<div className="field wide">
+  <span>Team Involvement</span>
+  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+    {TEAM_INVOLVEMENT_OPTIONS.map((t) => (
+      <label key={t} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <input
+          type="checkbox"
+          checked={values.teamInvolvement.includes(t)}
+          onChange={() =>
+            setValues((v) => ({
+              ...v,
+              teamInvolvement: v.teamInvolvement.includes(t)
+                ? v.teamInvolvement.filter((x) => x !== t)
+                : [...v.teamInvolvement, t],
+            }))
+          }
+        />
+        {t}
+      </label>
+    ))}
+  </div>
+</div>
           </div>
         </FormSection>
 <FormSection
   icon={<ClipboardPlus size={16} />}
   title="Medical Records"
-  desc="Upload scans, test results and assessments, with the date of assessment and the date each record expires."
+desc="Upload scans, test results and assessments, with the date of each record."
 >
   {records.length === 0 && (
     <p className="section-empty">No medical records added yet.</p>
@@ -872,20 +1249,20 @@ for (const doc of documents) {
             ))}
           </select>
         </Field>
-        <Field label="Date of Assessment" required>
+        <Field label="Date" required>
           <input
             type="date"
             value={rec.dateOfAssessment}
             onChange={(e) => updateRecord(rec.id, "dateOfAssessment", e.target.value)}
           />
         </Field>
-        <Field label="Expiry Date" hint="Optional">
+        {/* <Field label="Expiry Date" hint="Optional">
           <input
             type="date"
             value={rec.expiryDate}
             onChange={(e) => updateRecord(rec.id, "expiryDate", e.target.value)}
           />
-        </Field>
+        </Field> */}
         <Field label="Record File" required>
           <input
             type="file"
@@ -986,40 +1363,18 @@ for (const doc of documents) {
             Add Meal Entry
           </button>
 
-        <div className="form-subhead" style={{ marginTop: 24 }}>Favourite Activities</div>
+       <div className="form-subhead" style={{ marginTop: 24 }}>Favourite Activities</div>
 <div className="form-grid">
-  <Field label="Select Activities" wide hint="Choose as many as apply">
-    <select value="" onChange={(e) => addActivity(e.target.value)}>
-      <option value="">Select an activity...</option>
-      {ACTIVITIES.map((a) => (
-        <option key={a} value={a} disabled={activities.includes(a)}>
-          {a}
-        </option>
-      ))}
-    </select>
+  <Field label="Activities" wide>
+    <textarea
+      rows={4}
+      value={values.favouriteActivities}
+      onChange={(e) => update("favouriteActivities", e.target.value)}
+      placeholder="Describe what this client enjoys doing..."
+    />
   </Field>
-
-  {showOtherActivity && (
-    <Field label="Other Activity" wide>
-      <div style={{ display: "flex", gap: 8 }}>
-        <input
-          value={otherActivity}
-          onChange={(e) => setOtherActivity(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              addOtherActivity();
-            }
-          }}
-          placeholder="e.g. Bird watching"
-        />
-        <button type="button" className="outline small" onClick={addOtherActivity}>
-          <Plus size={14} /> Add
-        </button>
-      </div>
-    </Field>
-  )}
 </div>
+
 
 {activities.length > 0 && (
   <div className="activity-chips">
@@ -1066,28 +1421,47 @@ for (const doc of documents) {
           </button>
         </div>
 
-        <div className="form-grid">
-          <Field label="Document Title" required>
-            <input
-              value={doc.title}
-              onChange={(e) => updateDocument(doc.id, "title", e.target.value)}
-              placeholder="e.g. Care Plan 2025"
-            />
-          </Field>
-          <Field label="Document Type">
-            <select
-              value={doc.documentType}
-              onChange={(e) => updateDocument(doc.id, "documentType", e.target.value)}
-            >
-              {DOCUMENT_TYPES.map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Date Uploaded">
-            <input value={formatDate(doc.uploadedAt)} readOnly disabled />
-          </Field>
-        </div>
+    <div className="form-grid">
+  <Field label="Document Title" required>
+    <input
+      value={doc.title}
+      onChange={(e) => updateDocument(doc.id, "title", e.target.value)}
+      placeholder="e.g. Care Plan 2025"
+    />
+  </Field>
+  <Field label="Document Type">
+    <select
+      value={doc.documentType}
+      onChange={(e) => updateDocument(doc.id, "documentType", e.target.value)}
+    >
+      {DOCUMENT_TYPES.map((t) => (
+        <option key={t}>{t}</option>
+      ))}
+    </select>
+  </Field>
+  <Field label="Date">
+    <input
+      type="date"
+      value={doc.uploadedAt}
+      onChange={(e) => updateDocument(doc.id, "uploadedAt", e.target.value)}
+    />
+  </Field>
+  <div className="field wide">
+    <span>Who can view this document</span>
+    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+      {DOCUMENT_VIEWERS.map((v) => (
+        <label key={v.value} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <input
+            type="checkbox"
+            checked={doc.visibleTo.includes(v.value)}
+            onChange={() => toggleDocViewer(doc.id, v.value)}
+          />
+          {v.label}
+        </label>
+      ))}
+    </div>
+  </div>
+</div>
       </div>
     ))}
   </div>

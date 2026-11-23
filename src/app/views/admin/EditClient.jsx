@@ -12,6 +12,7 @@ import {
   FileText,
   Trash2,
   Pill,
+   Camera,
 } from "lucide-react";
 import { useData } from "../../../context/DataContext.jsx";
 import "./AddClient.css"; // adjust path if your AddClient folder lives elsewhere
@@ -80,7 +81,36 @@ function toDateInputValue(value) {
   if (Number.isNaN(d.getTime())) return "";
   return d.toISOString().slice(0, 10);
 }
+function getInitials(name = "") {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
 
+function resizeImage(file, max = 256) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 function EditClient() {
   const nav = useNavigate();
   const { id } = useParams();
@@ -129,6 +159,7 @@ function EditClient() {
           address: client.address || "",
           postCode: client.postCode || "",
           region: client.region || "",
+          pronouns: client.pronouns || "",
           maritalStatus: client.maritalStatus || "",
           religion: client.religion || "",
           ethnicity: client.ethnicity || "",
@@ -145,6 +176,7 @@ function EditClient() {
             bedtime: client.dailyCare?.bedtime || "",
             bathTime: client.dailyCare?.bathTime || "",
           },
+          profilePhoto: client.profilePhoto || "",
         });
 
         setMeals(
@@ -187,7 +219,15 @@ function EditClient() {
   const updateNested = (section, field, value) => {
     setValues((v) => ({ ...v, [section]: { ...v[section], [field]: value } }));
   };
-
+const handlePhoto = async (file) => {
+  if (!file) return;
+  try {
+    const dataUrl = await resizeImage(file);
+    update("profilePhoto", dataUrl);
+  } catch {
+    setError("Could not read that image. Please try another file.");
+  }
+};
   // ---------- New documents (uploaded during this edit) ----------
   const handleFiles = (fileList) => {
     const files = Array.from(fileList || []);
@@ -278,6 +318,7 @@ function EditClient() {
       communicationPreference: values.communicationPreference,
       medicalHistory: values.medicalHistory,
       allergies: values.allergies,
+      pronouns: values.pronouns,
       favoriteActivities: values.favouriteActivities,
       dailyCare: values.dailyCare,
       emergencyContact: {
@@ -286,6 +327,7 @@ function EditClient() {
         nextOfKinName: values.nextOfKinName,
         nextOfKinPhone: values.nextOfKinPhone,
       },
+      profilePhoto: values.profilePhoto,
       foodIntake: meals
         .filter((m) => m.type)
         .map(({ type, description, time, day }) => ({
@@ -350,6 +392,38 @@ function EditClient() {
           title="Personal Information"
           desc="Core identity and contact details for this client."
         >
+
+          <div className="photo-upload">
+  <div className="photo-circle">
+    {values.profilePhoto ? (
+      <img src={values.profilePhoto} alt={values.name || "Client"} />
+    ) : (
+      <span>{getInitials(values.name) || <Camera size={22} />}</span>
+    )}
+  </div>
+  <div className="photo-actions">
+    <label className="outline small photo-btn">
+      <Camera size={14} />
+      {values.profilePhoto ? "Change Photo" : "Upload Photo"}
+      <input
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => handlePhoto(e.target.files[0])}
+      />
+    </label>
+    {values.profilePhoto && (
+      <button
+        type="button"
+        className="medication-remove"
+        onClick={() => update("profilePhoto", "")}
+      >
+        <Trash2 size={13} /> Remove
+      </button>
+    )}
+    <small className="field-hint">JPG or PNG. It is resized automatically.</small>
+  </div>
+</div>
           <div className="form-grid">
             <Field label="Full Name" required>
               <input value={values.name} onChange={(e) => update("name", e.target.value)} />
@@ -381,6 +455,14 @@ function EditClient() {
                 <option value="Other">Other</option>
               </select>
             </Field>
+            <Field label="Pronouns">
+  <select value={values.pronouns} onChange={(e) => update("pronouns", e.target.value)}>
+    <option value="">Select...</option>
+    <option value="He">He</option>
+    <option value="She">She</option>
+    <option value="They">They</option>
+  </select>
+</Field>
             <Field label="Address" wide required>
               <input value={values.address} onChange={(e) => update("address", e.target.value)} />
             </Field>

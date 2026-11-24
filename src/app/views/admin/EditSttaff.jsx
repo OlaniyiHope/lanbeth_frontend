@@ -5,16 +5,46 @@ import { useData } from "../../../context/DataContext.jsx";
 import { getStaffById, updateStaffMember } from "../../../lib/api.js";
 import "./StaffProfile.css";
 
+// const FIELDS = [
+//   { key: "fullName", label: "Full Name" },
+//   { key: "username", label: "Username" },
+//   { key: "email", label: "Email", type: "email" },
+//   { key: "phone", label: "Phone" },
+//   { key: "role", label: "Role" },
+//   { key: "jobTitle", label: "Job Title" },
+//   { key: "positionAppliedFor", label: "Position Applied For" },
+//   { key: "gender", label: "Gender" },
+//   { key: "dateOfBirth", label: "Date of Birth", type: "date" },
+//   { key: "maritalStatus", label: "Marital Status" },
+//   { key: "religion", label: "Religion" },
+//   { key: "ethnicity", label: "Ethnicity" },
+//   { key: "address", label: "Address", wide: true },
+//   { key: "postcode", label: "Postcode" },
+//   { key: "region", label: "Region" },
+//   { key: "workPermitExpiry", label: "Work Permit Expiry", type: "date" },
+//   { key: "nextOfKinName", label: "Next of Kin Name" },
+//   { key: "nextOfKinPhone", label: "Next of Kin Phone" },
+//   { key: "status", label: "Status" },
+// ];
+
+// Different endpoints in this codebase return the record under different
+// keys ({ user }, { staff }, or the bare object). Try the likely keys in
+// order instead of assuming one shape.
+
+const SEXUALITY_OPTIONS = ["Heterosexual", "Homosexual", "Bisexual", "Pansexual", "Asexual", "Prefer not to say", "Other"];
+
 const FIELDS = [
   { key: "fullName", label: "Full Name" },
   { key: "username", label: "Username" },
   { key: "email", label: "Email", type: "email" },
   { key: "phone", label: "Phone" },
+  { key: "pronouns", label: "Pronouns", options: ["He", "She", "They"] },
+  { key: "gender", label: "Gender", options: ["Female", "Male", "Other", "Prefer not to say"] },
+  { key: "sexuality", label: "Sexuality", options: SEXUALITY_OPTIONS },
+  { key: "dateOfBirth", label: "Date of Birth", type: "date" },
   { key: "role", label: "Role" },
   { key: "jobTitle", label: "Job Title" },
   { key: "positionAppliedFor", label: "Position Applied For" },
-  { key: "gender", label: "Gender" },
-  { key: "dateOfBirth", label: "Date of Birth", type: "date" },
   { key: "maritalStatus", label: "Marital Status" },
   { key: "religion", label: "Religion" },
   { key: "ethnicity", label: "Ethnicity" },
@@ -27,9 +57,6 @@ const FIELDS = [
   { key: "status", label: "Status" },
 ];
 
-// Different endpoints in this codebase return the record under different
-// keys ({ user }, { staff }, or the bare object). Try the likely keys in
-// order instead of assuming one shape.
 function extractRecord(response) {
   if (!response) return null;
   if (response.user) return response.user;
@@ -73,7 +100,11 @@ function EditStaff() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [passwords, setPasswords] = useState({ newPassword: "", confirmPassword: "" });
+const [passwords, setPasswords] = useState({
+  confirmUsername: "",
+  newPassword: "",
+  confirmPassword: "",
+});
 const handlePhoto = async (file) => {
   if (!file) return;
   try {
@@ -154,11 +185,58 @@ const handlePhoto = async (file) => {
 //       setSaving(false);
 //     }
 //   };
+// const handleSubmit = async (e) => {
+//   e.preventDefault();
+//   setError("");
+
+//   if (passwords.newPassword) {
+//     if (passwords.newPassword.length < 8) {
+//       setError("New password must be at least 8 characters.");
+//       return;
+//     }
+//     if (passwords.newPassword !== passwords.confirmPassword) {
+//       setError("The passwords do not match.");
+//       return;
+//     }
+//   }
+
+//   setSaving(true);
+//   try {
+//     const { _id, id: _ignored, __v, createdAt, updatedAt, documents, password, ...editable } = form;
+
+//     const payload = passwords.newPassword
+//       ? { ...editable, password: passwords.newPassword }
+//       : editable;
+
+//     const response = await updateStaffMember(id, payload);
+//     const updated = extractRecord(response) || form;
+
+//     setData({
+//       ...data,
+//       staff: data.staff.map((s) =>
+//         (s._id || s.id) === id ? { ...s, ...updated } : s
+//       ),
+//     });
+
+//     nav(`/admin/staff-profile/${id}`);
+//   } catch (err) {
+//     setError(err.message || "Failed to save changes.");
+//   } finally {
+//     setSaving(false);
+//   }
+// };
+
 const handleSubmit = async (e) => {
   e.preventDefault();
   setError("");
 
   if (passwords.newPassword) {
+    const typed = passwords.confirmUsername.trim().toLowerCase();
+    const actual = (form?.username || "").trim().toLowerCase();
+    if (!typed || typed !== actual) {
+      setError("Type this staff member's username exactly to confirm the password change.");
+      return;
+    }
     if (passwords.newPassword.length < 8) {
       setError("New password must be at least 8 characters.");
       return;
@@ -182,9 +260,7 @@ const handleSubmit = async (e) => {
 
     setData({
       ...data,
-      staff: data.staff.map((s) =>
-        (s._id || s.id) === id ? { ...s, ...updated } : s
-      ),
+      staff: data.staff.map((s) => ((s._id || s.id) === id ? { ...s, ...updated } : s)),
     });
 
     nav(`/admin/staff-profile/${id}`);
@@ -264,22 +340,40 @@ const handleSubmit = async (e) => {
   </div>
 </div>
         <div className="form-grid">
-          {FIELDS.map(({ key, label, type, wide }) => (
-            <label className={`field ${wide ? "wide" : ""}`} key={key}>
-              <span>{label}</span>
-              <input
-                type={type || "text"}
-                value={form?.[key] ?? ""}
-                onChange={handleChange(key)}
-              />
-            </label>
-          ))}
+      {FIELDS.map(({ key, label, type, wide, options }) => (
+  <label className={`field ${wide ? "wide" : ""}`} key={key}>
+    <span>{label}</span>
+    {options ? (
+      <select value={form?.[key] ?? ""} onChange={handleChange(key)}>
+        <option value="">Select...</option>
+        {options.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+    ) : (
+      <input
+        type={type || "text"}
+        value={form?.[key] ?? ""}
+        onChange={handleChange(key)}
+      />
+    )}
+  </label>
+))}
         </div>
 <div className="subsection-bar" style={{ marginTop: 24 }}>Reset Password</div>
 <p className="field-hint">
-  Leave blank to keep the current password. The existing password cannot be viewed, only replaced.
+  Leave these blank to keep the current password. To change it, first type this staff member's username.
 </p>
 <div className="form-grid">
+  <label className="field wide">
+    <span>Type username to confirm</span>
+    <input
+      value={passwords.confirmUsername}
+      onChange={(e) => setPasswords((p) => ({ ...p, confirmUsername: e.target.value }))}
+      placeholder={form?.username || "username"}
+      autoComplete="off"
+    />
+  </label>
   <label className="field">
     <span>New Password</span>
     <input

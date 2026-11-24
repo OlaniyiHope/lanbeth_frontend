@@ -19,6 +19,7 @@ import {
   Bath,
   Save,
   CheckCircle2,
+  Plus
 } from "lucide-react";
 
 import { useData } from "../../../context/DataContext.jsx";
@@ -155,15 +156,15 @@ const initialForm = {
   },
 
   // Behaviour
-  behaviour: {
-    date: new Date().toISOString().split("T")[0],
-    time: "",
-    selected: [],
-    communicationReason: "",
-    antecedents: "",
-    consequences: "",
-    notes: "",
-  },
+  // behaviour: {
+  //   date: new Date().toISOString().split("T")[0],
+  //   time: "",
+  //   selected: [],
+  //   communicationReason: "",
+  //   antecedents: "",
+  //   consequences: "",
+  //   notes: "",
+  // },
 
   // Comfort
   comfort: {
@@ -189,7 +190,18 @@ const initialForm = {
   // General report
   generalNotes: "",
 };
+const todayISO = () => new Date().toISOString().split("T")[0];
 
+const emptyBehaviour = () => ({
+  id: makeId(),
+  date: todayISO(),
+  time: "",
+  selected: [],
+  communicationReason: "",
+  antecedents: "",
+  consequences: "",
+  notes: "",
+});
 function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -225,7 +237,29 @@ const client =
   const [reportFile, setReportFile] = useState(null);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+const [behaviours, setBehaviours] = useState([emptyBehaviour()]);
 
+const updateBehaviour = (id, field, value) =>
+  setBehaviours((list) => list.map((b) => (b.id === id ? { ...b, [field]: value } : b)));
+
+const toggleBehaviourItem = (id, item) =>
+  setBehaviours((list) =>
+    list.map((b) =>
+      b.id !== id
+        ? b
+        : {
+            ...b,
+            selected: b.selected.includes(item)
+              ? b.selected.filter((x) => x !== item)
+              : [...b.selected, item],
+          }
+    )
+  );
+
+const addBehaviour = () => setBehaviours((list) => [...list, emptyBehaviour()]);
+
+const removeBehaviour = (id) =>
+  setBehaviours((list) => list.filter((b) => b.id !== id));
   const update = (field, value) => {
     setForm((current) => ({
       ...current,
@@ -353,7 +387,7 @@ const handleSubmitReport = async (event) => {
     temperature: form.temperature,
     bloodPressure: form.bloodPressure,
     incident: form.incident,
-    behaviour: form.behaviour,
+   behaviour: behaviours.map(({ id, ...rest }) => rest),
     comfort: form.comfort,
     bloodTest: form.bloodTest,
     generalNotes: form.generalNotes,
@@ -692,13 +726,14 @@ const handleSubmitReport = async (event) => {
               />
             </Field>
 
-            <Field label="Finances">
-              <SelectYesNo
-                value={form.finances}
-                onChange={(value) => update("finances", value)}
-              />
-            </Field>
-
+         <Field label="Finances" wide>
+  <textarea
+    rows="4"
+    value={form.finances}
+    onChange={(e) => update("finances", e.target.value)}
+    placeholder="Record any financial transactions, money handled, or notes..."
+  />
+</Field>
             <Field label="Keywork Session">
               <SelectYesNo
                 value={form.keyworkSession}
@@ -1143,129 +1178,123 @@ const handleSubmitReport = async (event) => {
             BEHAVIOUR
         ============================== */}
 
-        <ReportSection
-          icon={<Brain size={18} />}
-          title="Behaviour"
-          description="Record behaviour observed during the care period."
+     <ReportSection
+  icon={<Brain size={18} />}
+  title="Behaviour"
+  description="Record behaviour observed during the care period. Add another entry for each separate observation."
+>
+  {behaviours.map((b, index) => (
+    <div
+      key={b.id}
+      style={{
+        borderTop: index > 0 ? "1px solid #e5e7eb" : "none",
+        marginTop: index > 0 ? 28 : 0,
+        paddingTop: index > 0 ? 28 : 0,
+      }}
+    >
+      <div className="report-grid">
+        <Field label="Date">
+          <input
+            type="date"
+            value={b.date}
+            onChange={(e) => updateBehaviour(b.id, "date", e.target.value)}
+          />
+        </Field>
+
+        <Field label="Time">
+          <input
+            type="time"
+            value={b.time}
+            onChange={(e) => updateBehaviour(b.id, "time", e.target.value)}
+          />
+        </Field>
+      </div>
+
+      <div className="field-block">
+        <label>Behaviour Observed</label>
+
+        <div className="checkbox-grid">
+          {BEHAVIOURS.map((item) => (
+            <label className="checkbox-card" key={item}>
+              <input
+                type="checkbox"
+                checked={b.selected.includes(item)}
+                onChange={() => toggleBehaviourItem(b.id, item)}
+              />
+              <span>{item}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="field-block">
+        <label>Communication / Trigger Reason</label>
+
+        <div className="trigger-list">
+          {COMMUNICATION_REASONS.map((reason) => (
+            <label className="checkbox-card" key={reason}>
+              <input
+                type="radio"
+                name={`reason-${b.id}`}
+                checked={b.communicationReason === reason}
+                onChange={() => updateBehaviour(b.id, "communicationReason", reason)}
+              />
+              <span>{reason}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="report-grid" style={{ gap: 24 }}>
+        <Field label="Antecedents — What happened before the incident?" wide>
+          <textarea
+            rows="5"
+            value={b.antecedents}
+            onChange={(e) => updateBehaviour(b.id, "antecedents", e.target.value)}
+            placeholder="Describe what happened immediately before..."
+          />
+        </Field>
+
+        <Field label="Consequences — What happened after the incident?" wide>
+          <textarea
+            rows="5"
+            value={b.consequences}
+            onChange={(e) => updateBehaviour(b.id, "consequences", e.target.value)}
+            placeholder="Describe what happened afterwards..."
+          />
+        </Field>
+
+        <Field label="Behaviour Notes" wide>
+          <textarea
+            rows="4"
+            value={b.notes}
+            onChange={(e) => updateBehaviour(b.id, "notes", e.target.value)}
+          />
+        </Field>
+      </div>
+
+      {behaviours.length > 1 && (
+        <button
+          type="button"
+          className="report-outline-btn"
+          style={{ marginTop: 16 }}
+          onClick={() => removeBehaviour(b.id)}
         >
-          <div className="report-grid">
-            <Field label="Date">
-              <input
-                type="date"
-                value={form.behaviour.date}
-                onChange={(e) =>
-                  updateSection("behaviour", "date", e.target.value)
-                }
-              />
-            </Field>
+          <Trash2 size={14} /> Remove this entry
+        </button>
+      )}
+    </div>
+  ))}
 
-            <Field label="Time">
-              <input
-                type="time"
-                value={form.behaviour.time}
-                onChange={(e) =>
-                  updateSection("behaviour", "time", e.target.value)
-                }
-              />
-            </Field>
-          </div>
-
-          <div className="field-block">
-            <label>Behaviour Observed</label>
-
-            <div className="checkbox-grid">
-              {BEHAVIOURS.map((behaviour) => (
-                <label className="checkbox-card" key={behaviour}>
-                  <input
-                    type="checkbox"
-                    checked={form.behaviour.selected.includes(behaviour)}
-                    onChange={() => toggleBehaviour(behaviour)}
-                  />
-                  <span>{behaviour}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="field-block">
-            <label>Communication / Trigger Reason</label>
-
-            <div className="trigger-list">
-              {COMMUNICATION_REASONS.map((reason) => (
-                <label className="checkbox-card" key={reason}>
-                  <input
-                    type="radio"
-                    name="communicationReason"
-                    checked={
-                      form.behaviour.communicationReason === reason
-                    }
-                    onChange={() =>
-                      updateSection(
-                        "behaviour",
-                        "communicationReason",
-                        reason
-                      )
-                    }
-                  />
-                  <span>{reason}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="report-grid">
-            <Field
-              label="Antecedents — What happened before the incident?"
-              wide
-            >
-              <textarea
-                rows="5"
-                value={form.behaviour.antecedents}
-                onChange={(e) =>
-                  updateSection(
-                    "behaviour",
-                    "antecedents",
-                    e.target.value
-                  )
-                }
-                placeholder="Describe what happened immediately before..."
-              />
-            </Field>
-
-            <Field
-              label="Consequences — What happened after the incident?"
-              wide
-            >
-              <textarea
-                rows="5"
-                value={form.behaviour.consequences}
-                onChange={(e) =>
-                  updateSection(
-                    "behaviour",
-                    "consequences",
-                    e.target.value
-                  )
-                }
-                placeholder="Describe what happened afterwards..."
-              />
-            </Field>
-
-            <Field label="Behaviour Notes" wide>
-              <textarea
-                rows="4"
-                value={form.behaviour.notes}
-                onChange={(e) =>
-                  updateSection(
-                    "behaviour",
-                    "notes",
-                    e.target.value
-                  )
-                }
-              />
-            </Field>
-          </div>
-        </ReportSection>
-
+  <button
+    type="button"
+    className="report-outline-btn"
+    style={{ marginTop: 24 }}
+    onClick={addBehaviour}
+  >
+    <Plus size={14} /> Add Behaviour Entry
+  </button>
+</ReportSection>
         {/* ==============================
             COMFORT CHECK
         ============================== */}

@@ -23,6 +23,13 @@ import {
   ShieldCheck,
   UserPlus,
   Send,
+  KeyRound,
+BedDouble,
+Wallet,
+MessageSquare,
+GraduationCap,
+ClipboardCheck,
+UploadCloud
 } from "lucide-react";
 
 import { useData } from "../../../context/DataContext.jsx";
@@ -79,7 +86,12 @@ const TABS = [
     label: "Documents",
     icon: FolderOpen,
   },
-
+{ key: "keywork", label: "Keywork", icon: KeyRound },
+{ key: "bedroom", label: "Bedroom Check", icon: BedDouble },
+{ key: "finance", label: "Finance", icon: Wallet },
+{ key: "feedback", label: "Feedback", icon: MessageSquare },
+{ key: "education", label: "Education", icon: GraduationCap },
+{ key: "ipa", label: "IPA", icon: ClipboardCheck },
   {
     key: "family",
     label: "Family & Emergency",
@@ -94,7 +106,14 @@ const TABS = [
 
 ];
 
-
+const CATEGORY_CONFIG = {
+  keywork: { label: "Keywork", visibleTo: ["super_admin", "admin", "staff"] },
+  bedroom: { label: "Bedroom Check", visibleTo: ["super_admin", "admin", "staff"] },
+  finance: { label: "Finance", visibleTo: ["super_admin", "admin", "staff"] },
+  feedback: { label: "Feedback", visibleTo: ["super_admin", "admin", "staff"] },
+  education: { label: "Education", visibleTo: ["super_admin", "admin", "staff"] },
+  ipa: { label: "IPA", visibleTo: ["super_admin"] },
+};
 
 function formatTime(value) {
 
@@ -325,8 +344,8 @@ export default function ClientProfile() {
 
             <span className="client-hero-code">
 
-              Client ID: {client.id}
-
+              {/* Client ID: {client.id} */}
+Client ID: {client.clientId}
             </span>
 
 
@@ -561,7 +580,14 @@ export default function ClientProfile() {
           )
         }
 
-
+{CATEGORY_CONFIG[activeTab] && (
+  <CategoryDocumentsTab
+    key={activeTab}
+    client={client}
+    category={activeTab}
+    config={CATEGORY_CONFIG[activeTab]}
+  />
+)}
         {
           activeTab === "documents" && (
             <DocumentsTab
@@ -1293,7 +1319,8 @@ function DocumentsTab({ client }) {
         ? result.data
         : [];
 
-      setDocuments(loadedDocuments);
+      // setDocuments(loadedDocuments);
+      setDocuments(loadedDocuments.filter((d) => !d.category));
     } catch (err) {
       console.error("Load staff client documents error:", err);
       setError(
@@ -1778,7 +1805,142 @@ function Info({
   );
 
 }
+function CategoryDocumentsTab({ client, category, config }) {
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [file, setFile] = useState(null);
 
+  const clientId = client?._id;
+  const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:5001").replace(/\/$/, "");
+  const token = localStorage.getItem("lanbeth-auth-token");
+
+  const loadDocuments = async () => {
+    if (!clientId || !token) return setLoading(false);
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE_URL}/api/clients/${clientId}/documents`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result?.message || result?.error || "Failed to load documents.");
+      const list = Array.isArray(result) ? result : result?.documents || [];
+      setDocuments(list.filter((d) => d.category === category));
+    } catch (err) {
+      setError(err.message || "Unable to load documents.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId, category]);
+
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    if (!file) return setError("Please choose a file to upload.");
+    if (!title.trim()) return setError("Please enter a title.");
+    if (!date) return setError("Please enter the date.");
+
+    try {
+      setUploading(true);
+      setError("");
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("documentType", "Other");
+      fd.append("title", title.trim());
+      fd.append("dateOfAssessment", date);
+      fd.append("category", category);
+      fd.append("visibleTo", JSON.stringify(config.visibleTo));
+
+      const res = await fetch(`${API_BASE_URL}/api/clients/${clientId}/documents`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const result = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(result?.message || result?.error || "Upload failed.");
+
+      setTitle("");
+      setFile(null);
+      await loadDocuments();
+    } catch (err) {
+      setError(err.message || "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const formatDate = (value) =>
+    value
+      ? new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+      : "—";
+
+  return (
+    <div className="info-panel">
+      <div className="info-panel-section">
+        <h3>{config.label} Documents</h3>
+
+        <form onSubmit={handleUpload} className="info-grid">
+          <label className="field">
+            <span>Title</span>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Keywork session notes" />
+          </label>
+          <label className="field">
+            <span>Date</span>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+          <label className="field wide">
+            <span>File</span>
+            <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+          </label>
+          <div className="wide">
+            <button type="submit" className="primary" disabled={uploading}>
+              <UploadCloud size={14} /> {uploading ? "Uploading..." : "Upload Document"}
+            </button>
+          </div>
+        </form>
+
+        {error && <div className="form-error">{error}</div>}
+      </div>
+
+      <div className="info-panel-section">
+        {loading ? (
+          <p>Loading documents...</p>
+        ) : documents.length === 0 ? (
+          <EmptyState
+            icon={<FolderOpen size={20} />}
+            title={`No ${config.label.toLowerCase()} documents`}
+            desc="Uploaded files for this section will appear here."
+          />
+        ) : (
+          <div className="doc-list">
+            {documents.map((doc) => (
+              <div className="doc-row" key={doc._id}>
+                <span className="doc-icon"><FileText size={17} /></span>
+                <div className="doc-details" style={{ flex: 1, minWidth: 0 }}>
+                  <b>{doc.title || doc.fileName}</b>
+                  <small>Date: {formatDate(doc.dateOfAssessment)}</small>
+                  <small>Uploaded {formatDate(doc.uploadedAt)}</small>
+                </div>
+                {doc.fileUrl && (
+                  <a href={doc.fileUrl} target="_blank" rel="noreferrer" className="primary-light">
+                    <Download size={13} /> View
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 
 

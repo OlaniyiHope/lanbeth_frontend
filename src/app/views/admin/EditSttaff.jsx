@@ -38,7 +38,7 @@ const FIELDS = [
   { key: "username", label: "Username" },
   { key: "email", label: "Email", type: "email" },
   { key: "phone", label: "Phone" },
-  { key: "pronouns", label: "Pronouns", options: ["He", "She", "They"] },
+  { key: "pronoun", label: "pronoun", options: ["He", "She", "They"] },
   { key: "gender", label: "Gender", options: ["Female", "Male", "Other", "Prefer not to say"] },
   { key: "sexuality", label: "Sexuality", options: SEXUALITY_OPTIONS },
   { key: "dateOfBirth", label: "Date of Birth", type: "date" },

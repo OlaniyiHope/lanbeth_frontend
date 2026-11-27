@@ -21,7 +21,7 @@ import { useData } from "../../../context/DataContext.jsx";
 import "./AddClient.css";
 import {
   SEXUALITY_OPTIONS, DNAR_OPTIONS, OXYGEN_OPTIONS,
-  TEAM_INVOLVEMENT_OPTIONS, DOCUMENT_VIEWERS, emptyAdmission,
+  TEAM_INVOLVEMENT_OPTIONS, DOCUMENT_VIEWERS, emptyAdmission, buildLanguageOptions, mergeOptions
 } from "./clientFormOptions.js";
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Tea", "Supper"];
 const WEEKDAYS = [
@@ -33,28 +33,28 @@ const WEEKDAYS = [
   "Saturday",
   "Sunday",
 ];
-const LANGUAGES = [
-  "English",
-  "Welsh",
-  "Polish",
-  "Punjabi",
-  "Urdu",
-  "Bengali",
-  "Gujarati",
-  "Hindi",
-  "Arabic",
-  "French",
-  "Portuguese",
-  "Spanish",
-  "Yoruba",
-  "Igbo",
-  "Twi",
-  "Somali",
-  "Chinese (Mandarin)",
-  "Chinese (Cantonese)",
-  "British Sign Language (BSL)",
-  "Other",
-];
+// const LANGUAGES = [
+//   "English",
+//   "Welsh",
+//   "Polish",
+//   "Punjabi",
+//   "Urdu",
+//   "Bengali",
+//   "Gujarati",
+//   "Hindi",
+//   "Arabic",
+//   "French",
+//   "Portuguese",
+//   "Spanish",
+//   "Yoruba",
+//   "Igbo",
+//   "Twi",
+//   "Somali",
+//   "Chinese (Mandarin)",
+//   "Chinese (Cantonese)",
+//   "British Sign Language (BSL)",
+//   "Other",
+// ];
 const RELIGIONS = [
   "No religion",
   "Christian",
@@ -164,7 +164,15 @@ const ACTIVITIES = [
   "Pet therapy",
   "Other",
 ];  
-
+const ADMISSION_FIELDS = [
+  { key: "startDate", label: "Start Date", type: "date" },
+  { key: "banding", label: "Banding" },
+  { key: "authorityCategory", label: "Authority / Category" },
+  { key: "funeralArrangements", label: "Funeral Arrangements" },
+  { key: "funeralDirector", label: "Funeral Director" },
+  { key: "team", label: "Team" },
+  { key: "defaultShiftRun", label: "Default Shift Run" },
+];
 // const emptyClient = {
 //   name: "",
 //   email: "",
@@ -208,7 +216,7 @@ const emptyClient = {
   religion: "",
   ethnicity: "",
   sex: "",
-  pronouns: "",
+  pronoun: "",
   sexuality: "",
   nhsNumber: "",
   chiNumber: "",
@@ -248,7 +256,7 @@ function getInitials(name = "") {
 
 function AddClient() {
   const nav = useNavigate();
-  const { createClient } = useData();
+ const { data, createClient } = useData();
   const [values, setValues] = useState(emptyClient);
   const [documents, setDocuments] = useState([]);
   const [medications, setMedications] = useState([]);
@@ -259,7 +267,81 @@ const [activities, setActivities] = useState([]);
 const [showOtherActivity, setShowOtherActivity] = useState(false);
 const [otherActivity, setOtherActivity] = useState("");
 const [languages, setLanguages] = useState([{ id: makeId(), value: "", other: "" }]);
+const [customLanguages, setCustomLanguages] = useState([]);
 
+const savedLanguages = (data?.clients || []).flatMap((c) => c.languages || []);
+const languageOptions = buildLanguageOptions([...savedLanguages, ...customLanguages]);
+const [customTeam, setCustomTeam] = useState([]);
+const [newTeamName, setNewTeamName] = useState("");
+const [teamError, setTeamError] = useState("");
+
+const savedTeam = (data?.clients || []).flatMap((c) => c.medicalHealth?.teamInvolvement || []);
+const teamOptions = mergeOptions(TEAM_INVOLVEMENT_OPTIONS, [...savedTeam, ...customTeam]);
+
+const addTeamMember = () => {
+  const name = newTeamName.trim();
+  if (!name) {
+    setTeamError("Type the team member's name first.");
+    return;
+  }
+  // Use the existing spelling if it's already in the list
+  const existing = teamOptions.find((t) => t.toLowerCase() === name.toLowerCase());
+  const finalName = existing || name;
+
+  if (!teamOptions.includes(finalName)) {
+    setCustomTeam((list) => [...list, finalName]);
+  }
+  // Tick it straight away
+  setValues((v) => ({
+    ...v,
+    teamInvolvement: v.teamInvolvement.includes(finalName)
+      ? v.teamInvolvement
+      : [...v.teamInvolvement, finalName],
+  }));
+  setNewTeamName("");
+  setTeamError("");
+};
+const addCustomLanguage = (rowId, typed) => {
+  const name = (typed || "").trim();
+  if (!name) {
+    setError("Type the language name first.");
+    return;
+  }
+  // Use the existing spelling if it's already in the list
+  const existing = languageOptions.find((l) => l.toLowerCase() === name.toLowerCase());
+  const finalName = existing && existing !== "Other" ? existing : name;
+
+  if (!languageOptions.includes(finalName)) {
+    setCustomLanguages((list) => [...list, finalName]);
+  }
+  updateLanguage(rowId, "value", finalName);
+  setError("");
+};
+
+const [healthFields, setHealthFields] = useState([]);
+const [newHealthFieldName, setNewHealthFieldName] = useState("");
+const [healthFieldError, setHealthFieldError] = useState("");
+
+const addHealthField = () => {
+  const label = newHealthFieldName.trim();
+  if (!label) {
+    setHealthFieldError("Type a name for the new field first.");
+    return;
+  }
+  if (healthFields.some((f) => f.label.toLowerCase() === label.toLowerCase())) {
+    setHealthFieldError(`A field called "${label}" already exists.`);
+    return;
+  }
+  setHealthFields((list) => [...list, { id: makeId(), label, value: "" }]);
+  setNewHealthFieldName("");
+  setHealthFieldError("");
+};
+
+const updateHealthField = (id, value) =>
+  setHealthFields((list) => list.map((f) => (f.id === id ? { ...f, value } : f)));
+
+const removeHealthField = (id) =>
+  setHealthFields((list) => list.filter((f) => f.id !== id));
 const updateLanguage = (id, field, value) =>
   setLanguages((list) => list.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
 const addLanguage = () =>
@@ -274,22 +356,49 @@ const addActivity = (value) => {
   }
   setActivities((a) => (a.includes(value) ? a : [...a, value]));
 };
-const [admission, setAdmission] = useState(emptyAdmission);
+const [admission, setAdmission] = useState({ ...emptyAdmission, extraFields: [] });
+const [newFieldName, setNewFieldName] = useState("");
+const [fieldError, setFieldError] = useState("");
 
 const updateAdmission = (field, value) =>
   setAdmission((a) => ({ ...a, [field]: value }));
-const addAdmissionField = () =>
+
+const addAdmissionField = () => {
+  const label = newFieldName.trim();
+  if (!label) {
+    setFieldError("Type a name for the new field first.");
+    return;
+  }
+
+  const takenNames = [
+    ...ADMISSION_FIELDS.map((f) => f.label),
+    ...(admission.extraFields || []).map((f) => f.label),
+  ].map((name) => name.toLowerCase());
+
+  if (takenNames.includes(label.toLowerCase())) {
+    setFieldError(`A field called "${label}" already exists.`);
+    return;
+  }
+
   setAdmission((a) => ({
     ...a,
-    extraFields: [...(a.extraFields || []), { id: makeId(), label: "", value: "" }],
+    extraFields: [...(a.extraFields || []), { id: makeId(), label, value: "" }],
   }));
-const updateAdmissionField = (id, field, value) =>
+  setNewFieldName("");
+  setFieldError("");
+};
+
+const updateAdmissionField = (id, value) =>
   setAdmission((a) => ({
     ...a,
-    extraFields: a.extraFields.map((f) => (f.id === id ? { ...f, [field]: value } : f)),
+    extraFields: a.extraFields.map((f) => (f.id === id ? { ...f, value } : f)),
   }));
+
 const removeAdmissionField = (id) =>
-  setAdmission((a) => ({ ...a, extraFields: a.extraFields.filter((f) => f.id !== id) }));
+  setAdmission((a) => ({
+    ...a,
+    extraFields: a.extraFields.filter((f) => f.id !== id),
+  }));
 const addOtherActivity = () => {
   const value = otherActivity.trim();
   if (!value) return;
@@ -503,7 +612,7 @@ for (const doc of documents) {
 // serviceLevel: values.serviceLevel.trim() || undefined,
 //       profilePhoto: photo || undefined,
 //       religion: values.religion,
-//       pronouns: values.pronouns,
+//       pronoun: values.pronoun,
 //       ethnicity: values.ethnicity || undefined,
 //       gender: values.sex === "Other" ? undefined : values.sex,
 // communicationPreference:
@@ -559,7 +668,7 @@ const payload = {
   religion: values.religion,
   ethnicity: values.ethnicity || undefined,
   gender: values.sex === "Other" ? undefined : values.sex,
-  pronouns: values.pronouns || undefined,
+  pronoun: values.pronoun || undefined,
   sexuality: values.sexuality || undefined,
   dnar: values.dnar || undefined,
   nhsNumber: values.nhsNumber.trim() || undefined,
@@ -575,17 +684,37 @@ const payload = {
   medicalHistory: values.medicalHistory,
   allergies: values.allergies,
   favoriteActivities: values.favouriteActivities,
+  // medicalHealth: {
+  //   oxygen: values.oxygen,
+  //   onCatheter: values.onCatheter === "Yes",
+  //   teamInvolvement: values.teamInvolvement,
+  // },
   medicalHealth: {
-    oxygen: values.oxygen,
-    onCatheter: values.onCatheter === "Yes",
-    teamInvolvement: values.teamInvolvement,
-  },
+  oxygen: values.oxygen || undefined,
+  onCatheter: values.onCatheter === "Yes",
+  teamInvolvement: values.teamInvolvement,
+  customFields: healthFields
+    .filter((f) => f.label.trim())
+    .map(({ label, value }) => ({ label, value })),
+},
+  // admission: {
+  //   ...admission,
+  //   extraFields: (admission.extraFields || [])
+  //     .filter((f) => f.label.trim())
+  //     .map(({ label, value }) => ({ label, value })),
+  // },
   admission: {
-    ...admission,
-    extraFields: (admission.extraFields || [])
-      .filter((f) => f.label.trim())
-      .map(({ label, value }) => ({ label, value })),
-  },
+  startDate: admission.startDate || undefined,
+  banding: admission.banding || undefined,
+  authorityCategory: admission.authorityCategory || undefined,
+  funeralArrangements: admission.funeralArrangements || undefined,
+  funeralDirector: admission.funeralDirector || undefined,
+  team: admission.team || undefined,
+  defaultShiftRun: admission.defaultShiftRun || undefined,
+  extraFields: (admission.extraFields || [])
+    .filter((f) => f.label.trim())
+    .map(({ label, value }) => ({ label, value })),
+},
   dailyCare: values.dailyCare,
   emergencyContact: {
     familyMemberName: values.familyMemberName,
@@ -775,8 +904,8 @@ fd.append("visibleTo", JSON.stringify(doc.visibleTo));
                 <option value="Other">Other</option>
               </select>
             </Field>
-            <Field label="Pronouns">
-  <select value={values.pronouns} onChange={(e) => update("pronouns", e.target.value)}>
+            <Field label="pronoun">
+  <select value={values.pronoun} onChange={(e) => update("pronoun", e.target.value)}>
     <option value="">Select...</option>
     <option value="He">He</option>
     <option value="She">She</option>
@@ -869,16 +998,41 @@ fd.append("visibleTo", JSON.stringify(doc.visibleTo));
     <Field label={i === 0 ? "Language" : `Language ${i + 1}`} required={i === 0}>
       <select value={l.value} onChange={(e) => updateLanguage(l.id, "value", e.target.value)}>
         <option value="">Select...</option>
-        {LANGUAGES.map((lang) => (
-          <option key={lang}>{lang}</option>
+        {languageOptions.map((lang) => (
+          <option key={lang} value={lang}>
+            {lang === "Other" ? "Other (add a new language)" : lang}
+          </option>
         ))}
       </select>
     </Field>
+
     {l.value === "Other" && (
-      <Field label="Specify Language">
-        <input value={l.other} onChange={(e) => updateLanguage(l.id, "other", e.target.value)} />
-      </Field>
+      <div style={{ gridColumn: "1 / -1", display: "flex", gap: 8, alignItems: "flex-end" }}>
+        <div style={{ flex: 1 }}>
+          <Field label="New language name">
+            <input
+              value={l.other}
+              onChange={(e) => updateLanguage(l.id, "other", e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addCustomLanguage(l.id, l.other);
+                }
+              }}
+              placeholder="e.g. Tamil"
+            />
+          </Field>
+        </div>
+        <button
+          type="button"
+          className="outline small"
+          onClick={() => addCustomLanguage(l.id, l.other)}
+        >
+          <Plus size={14} /> Add to list
+        </button>
+      </div>
     )}
+
     {languages.length > 1 && (
       <button type="button" className="medication-remove" onClick={() => removeLanguage(l.id)}>
         <Trash2 size={13} /> Remove
@@ -895,7 +1049,7 @@ fd.append("visibleTo", JSON.stringify(doc.visibleTo));
 
         <FormSection
           icon={<Users size={16} />}
-          title="Family & Emergency Contacts"
+          title="Name"
           desc="Who to reach in the event of an emergency."
         >
           <div className="form-grid">
@@ -1118,49 +1272,69 @@ fd.append("visibleTo", JSON.stringify(doc.visibleTo));
 <FormSection
   icon={<ClipboardList size={16} />}
   title="Admission"
-  desc="Admission details. Use Add Field to record anything else."
+  desc="Fixed admission fields are always shown. To add another, type a field name below and click Add Field."
 >
   <div className="form-grid">
-    <Field label="Start Date">
-      <input type="date" value={admission.startDate} onChange={(e) => updateAdmission("startDate", e.target.value)} />
-    </Field>
-    <Field label="Banding">
-      <input value={admission.banding} onChange={(e) => updateAdmission("banding", e.target.value)} />
-    </Field>
-    <Field label="Authority / Category">
-      <input value={admission.authorityCategory} onChange={(e) => updateAdmission("authorityCategory", e.target.value)} />
-    </Field>
-    <Field label="Funeral Arrangements">
-      <input value={admission.funeralArrangements} onChange={(e) => updateAdmission("funeralArrangements", e.target.value)} />
-    </Field>
-    <Field label="Funeral Director">
-      <input value={admission.funeralDirector} onChange={(e) => updateAdmission("funeralDirector", e.target.value)} />
-    </Field>
-    <Field label="Team">
-      <input value={admission.team} onChange={(e) => updateAdmission("team", e.target.value)} />
-    </Field>
-    <Field label="Default Shift Run">
-      <input value={admission.defaultShiftRun} onChange={(e) => updateAdmission("defaultShiftRun", e.target.value)} />
-    </Field>
+    {ADMISSION_FIELDS.map(({ key, label, type }) => (
+      <Field key={key} label={label}>
+        <input
+          type={type || "text"}
+          value={admission[key] || ""}
+          onChange={(e) => updateAdmission(key, e.target.value)}
+        />
+      </Field>
+    ))}
+
+    {(admission.extraFields || []).map((f) => (
+      <div
+        key={f.id}
+        style={{ gridColumn: "1 / -1", display: "flex", gap: 8, alignItems: "flex-end" }}
+      >
+        <div style={{ flex: 1 }}>
+          <Field label={f.label}>
+            <input
+              value={f.value}
+              onChange={(e) => updateAdmissionField(f.id, e.target.value)}
+            />
+          </Field>
+        </div>
+        <button
+          type="button"
+          className="medication-remove"
+          onClick={() => removeAdmissionField(f.id)}
+          aria-label={`Remove ${f.label}`}
+        >
+          <Trash2 size={13} /> Remove
+        </button>
+      </div>
+    ))}
   </div>
 
-  {(admission.extraFields || []).map((f) => (
-    <div className="form-grid" key={f.id} style={{ marginTop: 12 }}>
-      <Field label="Field Name">
-        <input value={f.label} onChange={(e) => updateAdmissionField(f.id, "label", e.target.value)} />
+  <div style={{ display: "flex", gap: 8, marginTop: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
+    <div style={{ flex: 1, minWidth: 220 }}>
+      <Field label="New field name">
+        <input
+          value={newFieldName}
+          onChange={(e) => {
+            setNewFieldName(e.target.value);
+            setFieldError("");
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault(); // stop Enter from submitting the whole form
+              addAdmissionField();
+            }
+          }}
+          placeholder="e.g. Ward Number"
+        />
       </Field>
-      <Field label="Value">
-        <input value={f.value} onChange={(e) => updateAdmissionField(f.id, "value", e.target.value)} />
-      </Field>
-      <button type="button" className="medication-remove" onClick={() => removeAdmissionField(f.id)}>
-        <Trash2 size={13} /> Remove
-      </button>
     </div>
-  ))}
+    <button type="button" className="outline small" onClick={addAdmissionField}>
+      <Plus size={14} /> Add Field
+    </button>
+  </div>
 
-  <button type="button" className="outline small" onClick={addAdmissionField} style={{ marginTop: 12 }}>
-    <Plus size={14} /> Add Field
-  </button>
+  {fieldError && <div className="form-error" style={{ marginTop: 8 }}>{fieldError}</div>}
 </FormSection>
         <FormSection
           icon={<HeartPulse size={16} />}
@@ -1208,7 +1382,7 @@ fd.append("visibleTo", JSON.stringify(doc.visibleTo));
 <div className="field wide">
   <span>Team Involvement</span>
   <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-    {TEAM_INVOLVEMENT_OPTIONS.map((t) => (
+    {teamOptions.map((t) => (
       <label key={t} style={{ display: "flex", gap: 6, alignItems: "center" }}>
         <input
           type="checkbox"
@@ -1226,6 +1400,76 @@ fd.append("visibleTo", JSON.stringify(doc.visibleTo));
       </label>
     ))}
   </div>
+
+  {healthFields.map((f) => (
+  <div key={f.id} style={{ gridColumn: "1 / -1", display: "flex", gap: 8, alignItems: "flex-end" }}>
+    <div style={{ flex: 1 }}>
+      <Field label={f.label}>
+        <input value={f.value} onChange={(e) => updateHealthField(f.id, e.target.value)} />
+      </Field>
+    </div>
+    <button
+      type="button"
+      className="medication-remove"
+      onClick={() => removeHealthField(f.id)}
+      aria-label={`Remove ${f.label}`}
+    >
+      <Trash2 size={13} /> Remove
+    </button>
+  </div>
+))}
+
+<div style={{ gridColumn: "1 / -1", display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+  <div style={{ flex: 1, minWidth: 220 }}>
+    <Field label="New health field name">
+      <input
+        value={newHealthFieldName}
+        onChange={(e) => {
+          setNewHealthFieldName(e.target.value);
+          setHealthFieldError("");
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            addHealthField();
+          }
+        }}
+        placeholder="e.g. Mobility"
+      />
+    </Field>
+  </div>
+  <button type="button" className="outline small" onClick={addHealthField}>
+    <Plus size={14} /> Add Field
+  </button>
+  {healthFieldError && (
+    <div className="form-error" style={{ width: "100%" }}>{healthFieldError}</div>
+  )}
+</div>
+
+  <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+    <div style={{ flex: 1, minWidth: 220 }}>
+      <Field label="Add team member">
+        <input
+          value={newTeamName}
+          onChange={(e) => {
+            setNewTeamName(e.target.value);
+            setTeamError("");
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault(); // stop Enter from submitting the form
+              addTeamMember();
+            }
+          }}
+          placeholder="e.g. Podiatrist"
+        />
+      </Field>
+    </div>
+    <button type="button" className="outline small" onClick={addTeamMember}>
+      <Plus size={14} /> Add
+    </button>
+  </div>
+  {teamError && <div className="form-error" style={{ marginTop: 8 }}>{teamError}</div>}
 </div>
           </div>
         </FormSection>

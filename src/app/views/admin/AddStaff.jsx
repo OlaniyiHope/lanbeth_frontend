@@ -118,7 +118,7 @@ const emptyStaff = {
   positionAppliedFor: "",
   role: "",
   employment: "",
-  pronouns: "",
+  pronoun: "",
 sexuality: "",
   maritalStatus: "",
   religion: "",
@@ -394,7 +394,7 @@ const submit = async (e) => {
       address: values.address,
       postcode: values.postCode,
       region: values.region,
-pronouns: values.pronouns || undefined,
+pronoun: values.pronoun || undefined,
 sexuality: values.sexuality || undefined,
       gender: values.gender || undefined,
       dateOfBirth: values.dateOfBirth || undefined,
@@ -532,8 +532,8 @@ nav("/admin/staff");
                 <option value="Prefer not to say">Prefer not to say</option>
               </select>
             </Field>
-            <Field label="Pronouns">
-  <select value={values.pronouns} onChange={(e) => update("pronouns", e.target.value)}>
+            <Field label="pronoun">
+  <select value={values.pronoun} onChange={(e) => update("pronoun", e.target.value)}>
     <option value="">Select...</option>
     <option value="He">He</option>
     <option value="She">She</option>

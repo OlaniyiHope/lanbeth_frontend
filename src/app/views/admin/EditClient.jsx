@@ -851,6 +851,82 @@ function EditClient() {
 
   const [values, setValues] = useState(null);
   const [languages, setLanguages] = useState([]);
+  // Team Involvement
+const [customTeam, setCustomTeam] = useState([]);
+const [newTeamName, setNewTeamName] = useState("");
+const [teamError, setTeamError] = useState("");
+
+const savedTeam = (data?.clients || []).flatMap((c) => c.medicalHealth?.teamInvolvement || []);
+const teamOptions = mergeOptions(TEAM_INVOLVEMENT_OPTIONS, [...savedTeam, ...customTeam]);
+
+const addTeamMember = () => {
+  const name = newTeamName.trim();
+  if (!name) {
+    setTeamError("Type the team member's name first.");
+    return;
+  }
+  const existing = teamOptions.find((t) => t.toLowerCase() === name.toLowerCase());
+  const finalName = existing || name;
+  if (!teamOptions.includes(finalName)) {
+    setCustomTeam((list) => [...list, finalName]);
+  }
+  setValues((v) => ({
+    ...v,
+    teamInvolvement: v.teamInvolvement.includes(finalName)
+      ? v.teamInvolvement
+      : [...v.teamInvolvement, finalName],
+  }));
+  setNewTeamName("");
+  setTeamError("");
+};
+
+// Health fields
+const [healthFields, setHealthFields] = useState([]);
+const [newHealthFieldName, setNewHealthFieldName] = useState("");
+const [healthFieldError, setHealthFieldError] = useState("");
+
+const addHealthField = () => {
+  const label = newHealthFieldName.trim();
+  if (!label) {
+    setHealthFieldError("Type a name for the new field first.");
+    return;
+  }
+  if (healthFields.some((f) => f.label.toLowerCase() === label.toLowerCase())) {
+    setHealthFieldError(`A field called "${label}" already exists.`);
+    return;
+  }
+  setHealthFields((list) => [...list, { id: makeId(), label, value: "" }]);
+  setNewHealthFieldName("");
+  setHealthFieldError("");
+};
+const updateHealthField = (id, value) =>
+  setHealthFields((list) => list.map((f) => (f.id === id ? { ...f, value } : f)));
+const removeHealthField = (id) =>
+  setHealthFields((list) => list.filter((f) => f.id !== id));
+
+// Family & emergency fields
+const [familyFields, setFamilyFields] = useState([]);
+const [newFamilyFieldName, setNewFamilyFieldName] = useState("");
+const [familyFieldError, setFamilyFieldError] = useState("");
+
+const addFamilyField = () => {
+  const label = newFamilyFieldName.trim();
+  if (!label) {
+    setFamilyFieldError("Type a name for the new field first.");
+    return;
+  }
+  if (familyFields.some((f) => f.label.toLowerCase() === label.toLowerCase())) {
+    setFamilyFieldError(`A field called "${label}" already exists.`);
+    return;
+  }
+  setFamilyFields((list) => [...list, { id: makeId(), label, value: "" }]);
+  setNewFamilyFieldName("");
+  setFamilyFieldError("");
+};
+const updateFamilyField = (id, value) =>
+  setFamilyFields((list) => list.map((f) => (f.id === id ? { ...f, value } : f)));
+const removeFamilyField = (id) =>
+  setFamilyFields((list) => list.filter((f) => f.id !== id));
   const [customLanguages, setCustomLanguages] = useState([]);
 
 const savedLanguages = (data?.clients || []).flatMap((c) => c.languages || []);
@@ -985,6 +1061,13 @@ setCustomTeam(client.medicalHealth?.teamInvolvement || []);
 
 setHealthFields(
   (client.medicalHealth?.customFields || []).map((f) => ({
+    id: makeId(),
+    label: f.label,
+    value: f.value || "",
+  }))
+);
+setFamilyFields(
+  (client.emergencyContact?.customFields || []).map((f) => ({
     id: makeId(),
     label: f.label,
     value: f.value || "",
@@ -1218,11 +1301,14 @@ setHealthFields(
       medicalHistory: values.medicalHistory,
       allergies: values.allergies,
       favoriteActivities: values.favouriteActivities,
-      medicalHealth: {
-        oxygen: values.oxygen,
-        onCatheter: values.onCatheter === "Yes",
-        teamInvolvement: values.teamInvolvement,
-      },
+ medicalHealth: {
+  oxygen: values.oxygen || undefined,
+  onCatheter: values.onCatheter === "Yes",
+  teamInvolvement: values.teamInvolvement,
+  customFields: healthFields
+    .filter((f) => f.label.trim())
+    .map(({ label, value }) => ({ label, value })),
+},
       admission: {
         startDate: admission.startDate || undefined,
         banding: admission.banding || undefined,
@@ -1236,14 +1322,17 @@ setHealthFields(
           .map(({ label, value }) => ({ label, value })),
       },
       dailyCare: values.dailyCare,
-      emergencyContact: {
-        familyMemberName: values.familyMemberName,
-        relationship: values.relationship,
-        nextOfKinName: values.nextOfKinName,
-        nextOfKinPhone: values.nextOfKinPhone,
-        emails: values.emergencyEmails.filter((x) => x.trim()),
-        addresses: values.emergencyAddresses.filter((x) => x.trim()),
-      },
+  emergencyContact: {
+  familyMemberName: values.familyMemberName,
+  relationship: values.relationship,
+  nextOfKinName: values.nextOfKinName,
+  nextOfKinPhone: values.nextOfKinPhone,
+  emails: values.emergencyEmails.filter((x) => x.trim()),
+  addresses: values.emergencyAddresses.filter((x) => x.trim()),
+  customFields: familyFields
+    .filter((f) => f.label.trim())
+    .map(({ label, value }) => ({ label, value })),
+},
       professionals: professionals
         .filter((p) => p.role && p.name.trim())
         .map(({ id, ...rest }) => ({ ...rest, registeredDate: rest.registeredDate || undefined })),
@@ -1538,6 +1627,36 @@ setHealthFields(
           <button type="button" className="outline small" onClick={() => addListItem("emergencyEmails")}>
             <Plus size={14} /> Add Email
           </button>
+
+
+          {familyFields.map((f) => (
+  <div key={f.id} style={{ gridColumn: "1 / -1", display: "flex", gap: 8, alignItems: "flex-end" }}>
+    <div style={{ flex: 1 }}>
+      <Field label={f.label}>
+        <input value={f.value} onChange={(e) => updateFamilyField(f.id, e.target.value)} />
+      </Field>
+    </div>
+    <button type="button" className="medication-remove" onClick={() => removeFamilyField(f.id)} aria-label={`Remove ${f.label}`}>
+      <Trash2 size={13} /> Remove
+    </button>
+  </div>
+))}
+<div style={{ display: "flex", gap: 8, marginTop: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
+  <div style={{ flex: 1, minWidth: 220 }}>
+    <Field label="New field name">
+      <input
+        value={newFamilyFieldName}
+        onChange={(e) => { setNewFamilyFieldName(e.target.value); setFamilyFieldError(""); }}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addFamilyField(); } }}
+        placeholder="e.g. Date of Birth"
+      />
+    </Field>
+  </div>
+  <button type="button" className="outline small" onClick={addFamilyField}>
+    <Plus size={14} /> Add Field
+  </button>
+  {familyFieldError && <div className="form-error" style={{ width: "100%" }}>{familyFieldError}</div>}
+</div>
         </FormSection>
 
         {/* COUNCIL */}
@@ -1718,21 +1837,65 @@ setHealthFields(
                 <option value="Yes">Yes</option>
               </select>
             </Field>
-            <div className="field wide">
-              <span>Team Involvement</span>
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                {TEAM_INVOLVEMENT_OPTIONS.map((t) => (
-                  <label key={t} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <input
-                      type="checkbox"
-                      checked={values.teamInvolvement.includes(t)}
-                      onChange={() => toggleTeam(t)}
-                    />
-                    {t}
-                  </label>
-                ))}
-              </div>
-            </div>
+         <div className="field wide">
+  <span>Team Involvement</span>
+  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+    {teamOptions.map((t) => (
+      <label key={t} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <input
+          type="checkbox"
+          checked={values.teamInvolvement.includes(t)}
+          onChange={() => toggleTeam(t)}
+        />
+        {t}
+      </label>
+    ))}
+  </div>
+  <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+    <div style={{ flex: 1, minWidth: 220 }}>
+      <Field label="Add team member">
+        <input
+          value={newTeamName}
+          onChange={(e) => { setNewTeamName(e.target.value); setTeamError(""); }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTeamMember(); } }}
+          placeholder="e.g. Podiatrist"
+        />
+      </Field>
+    </div>
+    <button type="button" className="outline small" onClick={addTeamMember}>
+      <Plus size={14} /> Add
+    </button>
+  </div>
+  {teamError && <div className="form-error" style={{ marginTop: 8 }}>{teamError}</div>}
+</div>
+{healthFields.map((f) => (
+  <div key={f.id} style={{ gridColumn: "1 / -1", display: "flex", gap: 8, alignItems: "flex-end" }}>
+    <div style={{ flex: 1 }}>
+      <Field label={f.label}>
+        <input value={f.value} onChange={(e) => updateHealthField(f.id, e.target.value)} />
+      </Field>
+    </div>
+    <button type="button" className="medication-remove" onClick={() => removeHealthField(f.id)} aria-label={`Remove ${f.label}`}>
+      <Trash2 size={13} /> Remove
+    </button>
+  </div>
+))}
+<div style={{ gridColumn: "1 / -1", display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+  <div style={{ flex: 1, minWidth: 220 }}>
+    <Field label="New health field name">
+      <input
+        value={newHealthFieldName}
+        onChange={(e) => { setNewHealthFieldName(e.target.value); setHealthFieldError(""); }}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addHealthField(); } }}
+        placeholder="e.g. Mobility"
+      />
+    </Field>
+  </div>
+  <button type="button" className="outline small" onClick={addHealthField}>
+    <Plus size={14} /> Add Field
+  </button>
+  {healthFieldError && <div className="form-error" style={{ width: "100%" }}>{healthFieldError}</div>}
+</div>
           </div>
         </FormSection>
 

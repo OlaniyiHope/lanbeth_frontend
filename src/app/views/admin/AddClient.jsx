@@ -277,7 +277,30 @@ const [teamError, setTeamError] = useState("");
 
 const savedTeam = (data?.clients || []).flatMap((c) => c.medicalHealth?.teamInvolvement || []);
 const teamOptions = mergeOptions(TEAM_INVOLVEMENT_OPTIONS, [...savedTeam, ...customTeam]);
+const [familyFields, setFamilyFields] = useState([]);
+const [newFamilyFieldName, setNewFamilyFieldName] = useState("");
+const [familyFieldError, setFamilyFieldError] = useState("");
 
+const addFamilyField = () => {
+  const label = newFamilyFieldName.trim();
+  if (!label) {
+    setFamilyFieldError("Type a name for the new field first.");
+    return;
+  }
+  if (familyFields.some((f) => f.label.toLowerCase() === label.toLowerCase())) {
+    setFamilyFieldError(`A field called "${label}" already exists.`);
+    return;
+  }
+  setFamilyFields((list) => [...list, { id: makeId(), label, value: "" }]);
+  setNewFamilyFieldName("");
+  setFamilyFieldError("");
+};
+
+const updateFamilyField = (id, value) =>
+  setFamilyFields((list) => list.map((f) => (f.id === id ? { ...f, value } : f)));
+
+const removeFamilyField = (id) =>
+  setFamilyFields((list) => list.filter((f) => f.id !== id));
 const addTeamMember = () => {
   const name = newTeamName.trim();
   if (!name) {
@@ -716,14 +739,26 @@ const payload = {
     .map(({ label, value }) => ({ label, value })),
 },
   dailyCare: values.dailyCare,
+  // emergencyContact: {
+  //   familyMemberName: values.familyMemberName,
+  //   relationship: values.relationship,
+  //   nextOfKinName: values.nextOfKinName,
+  //   nextOfKinPhone: values.nextOfKinPhone,
+  //   emails: values.emergencyEmails.filter((e) => e.trim()),
+  //   addresses: values.emergencyAddresses.filter((a) => a.trim()),
+  // },
+  
   emergencyContact: {
-    familyMemberName: values.familyMemberName,
-    relationship: values.relationship,
-    nextOfKinName: values.nextOfKinName,
-    nextOfKinPhone: values.nextOfKinPhone,
-    emails: values.emergencyEmails.filter((e) => e.trim()),
-    addresses: values.emergencyAddresses.filter((a) => a.trim()),
-  },
+  familyMemberName: values.familyMemberName,
+  relationship: values.relationship,
+  nextOfKinName: values.nextOfKinName,
+  nextOfKinPhone: values.nextOfKinPhone,
+  emails: values.emergencyEmails.filter((e) => e.trim()),
+  addresses: values.emergencyAddresses.filter((a) => a.trim()),
+  customFields: familyFields
+    .filter((f) => f.label.trim())
+    .map(({ label, value }) => ({ label, value })),
+},
   professionals: professionals
     .filter((p) => p.role && p.name.trim())
     .map(({ id, ...rest }) => ({ ...rest, registeredDate: rest.registeredDate || undefined })),
@@ -1110,7 +1145,53 @@ fd.append("visibleTo", JSON.stringify(doc.visibleTo));
 <button type="button" className="outline small" onClick={() => addListItem("emergencyEmails")}>
   <Plus size={14} /> Add Email
 </button>
+
+{familyFields.map((f) => (
+  <div key={f.id} style={{ gridColumn: "1 / -1", display: "flex", gap: 8, alignItems: "flex-end" }}>
+    <div style={{ flex: 1 }}>
+      <Field label={f.label}>
+        <input value={f.value} onChange={(e) => updateFamilyField(f.id, e.target.value)} />
+      </Field>
+    </div>
+    <button
+      type="button"
+      className="medication-remove"
+      onClick={() => removeFamilyField(f.id)}
+      aria-label={`Remove ${f.label}`}
+    >
+      <Trash2 size={13} /> Remove
+    </button>
+  </div>
+))}
+
+<div style={{ gridColumn: "1 / -1", display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+  <div style={{ flex: 1, minWidth: 220 }}>
+    <Field label="New field name">
+      <input
+        value={newFamilyFieldName}
+        onChange={(e) => {
+          setNewFamilyFieldName(e.target.value);
+          setFamilyFieldError("");
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            addFamilyField();
+          }
+        }}
+        placeholder="e.g. Date of Birth"
+      />
+    </Field>
+  </div>
+  <button type="button" className="outline small" onClick={addFamilyField}>
+    <Plus size={14} /> Add Field
+  </button>
+  {familyFieldError && (
+    <div className="form-error" style={{ width: "100%" }}>{familyFieldError}</div>
+  )}
+</div>
           </div>
+          
         </FormSection>
         <FormSection
   icon={<Landmark size={16} />}

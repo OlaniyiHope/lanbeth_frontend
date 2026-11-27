@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -6,185 +6,128 @@ import {
   Check,
   CheckCheck,
   ChevronRight,
+  Cake,
   FileWarning,
-  FileText,
-  UserPlus,
-  ClipboardList,
-  ShieldCheck,
-  CalendarClock,
+  Clock,
+  Megaphone,
+  RefreshCw,
   Info,
   X,
 } from "lucide-react";
 
 import "./Notifications.css";
 
-const INITIAL_NOTIFICATIONS = [
-  {
-    id: 1,
-    type: "expiry",
-    title: "Document Expiring Soon",
-    message:
-      "Your Care Certificate is due to expire soon. Please upload a renewed copy before the expiry date.",
-    date: "24 August 2026",
-    time: "09:15 AM",
-    unread: true,
-    priority: "high",
-    category: "Documents",
-    expiryDate: "30 August 2026",
-  },
-  {
-    id: 2,
-    type: "policy",
-    title: "New Company Policy Available",
-    message:
-      "A new Health & Safety policy has been published. Please review and acknowledge that you have read it.",
-    date: "23 August 2026",
-    time: "02:30 PM",
-    unread: true,
-    priority: "normal",
-    category: "Policies",
-  },
-  {
-    id: 3,
-    type: "client",
-    title: "New Client Assigned",
-    message:
-      "You have been assigned to a new client. Please review the client's care information before your next visit.",
-    date: "22 August 2026",
-    time: "11:20 AM",
-    unread: true,
-    priority: "normal",
-    category: "Clients",
-    clientName: "Sarah Williams",
-  },
-  {
-    id: 4,
-    type: "report",
-    title: "Care Report Reminder",
-    message:
-      "Please remember to submit today's care report for your assigned clients.",
-    date: "22 August 2026",
-    time: "08:00 PM",
-    unread: false,
-    priority: "normal",
-    category: "Reports",
-  },
-  {
-    id: 5,
-    type: "document",
-    title: "Document Approved",
-    message:
-      "Your National ID document has been reviewed and approved by the administrator.",
-    date: "21 August 2026",
-    time: "04:45 PM",
-    unread: false,
-    priority: "normal",
-    category: "Documents",
-  },
-  {
-    id: 6,
-    type: "announcement",
-    title: "Staff Meeting Announcement",
-    message:
-      "There will be a mandatory staff meeting on Friday at 10:00 AM. Please make arrangements to attend.",
-    date: "20 August 2026",
-    time: "10:10 AM",
-    unread: false,
-    priority: "normal",
-    category: "Announcements",
-  },
-  {
-    id: 7,
-    type: "policy",
-    title: "Policy Review Reminder",
-    message:
-      "You have 2 company policies that have not yet been acknowledged.",
-    date: "19 August 2026",
-    time: "09:30 AM",
-    unread: true,
-    priority: "normal",
-    category: "Policies",
-  },
-  {
-    id: 8,
-    type: "client",
-    title: "Client Care Plan Updated",
-    message:
-      "The care plan for John Smith has been updated by the administrator. Please review the latest information.",
-    date: "18 August 2026",
-    time: "03:15 PM",
-    unread: false,
-    priority: "normal",
-    category: "Clients",
-    clientName: "John Smith",
-  },
-];
+const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:5001").replace(/\/$/, "");
+const TOKEN_KEY = "lanbeth-auth-token";
+
+const CATEGORY_BY_TYPE = {
+  document_expired: "Documents",
+  document_expiring: "Documents",
+  birthday: "Birthdays",
+  notice: "Notices",
+};
+
+const formatDate = (value) =>
+  value
+    ? new Date(value).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })
+    : "";
+
+const formatTime = (value) =>
+  value ? new Date(value).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "";
+
+// Turn the API shape into the shape the UI uses
+function mapNotification(n) {
+  return {
+    id: n._id,
+    type: n.type,
+    title: n.title,
+    message: n.message,
+    unread: !n.read,
+    date: formatDate(n.createdAt),
+    time: formatTime(n.createdAt),
+    category: CATEGORY_BY_TYPE[n.type] || "General",
+    priority: n.type === "document_expired" ? "high" : "normal",
+    expiryDate: n.expiryDate ? formatDate(n.expiryDate) : null,
+    senderName: n.sender?.fullName || null,
+  };
+}
+
+async function apiRequest(path, options = {}) {
+  const token = localStorage.getItem(TOKEN_KEY);
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || "Request failed.");
+  return data;
+}
 
 function Notifications() {
   const nav = useNavigate();
 
-  const [notifications, setNotifications] = useState(
-    INITIAL_NOTIFICATIONS
-  );
-
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [selectedNotification, setSelectedNotification] = useState(null);
 
-  const unreadCount = notifications.filter(
-    (notification) => notification.unread
-  ).length;
+  const loadNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const data = await apiRequest("/api/notifications");
+      setNotifications((data.notifications || []).map(mapNotification));
+    } catch (err) {
+      setError(err.message || "Unable to load notifications.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  const unreadCount = notifications.filter((n) => n.unread).length;
+  const actionRequiredCount = notifications.filter((n) => n.unread && n.priority === "high").length;
 
   const filteredNotifications = useMemo(() => {
-    if (filter === "unread") {
-      return notifications.filter((notification) => notification.unread);
-    }
-
-    if (filter === "read") {
-      return notifications.filter((notification) => !notification.unread);
-    }
-
+    if (filter === "unread") return notifications.filter((n) => n.unread);
+    if (filter === "read") return notifications.filter((n) => !n.unread);
     return notifications;
   }, [notifications, filter]);
 
-  const markAsRead = (id) => {
-    setNotifications((current) =>
-      current.map((notification) =>
-        notification.id === id
-          ? { ...notification, unread: false }
-          : notification
-      )
-    );
+  const markAsRead = async (id) => {
+    const target = notifications.find((n) => n.id === id);
+    if (!target || !target.unread) return;
+
+    // Update the screen first, then save
+    setNotifications((list) => list.map((n) => (n.id === id ? { ...n, unread: false } : n)));
+    try {
+      await apiRequest(`/api/notifications/${id}/read`, { method: "PATCH" });
+    } catch (err) {
+      setError(err.message);
+      loadNotifications();
+    }
   };
 
-  const markAsUnread = (id) => {
-    setNotifications((current) =>
-      current.map((notification) =>
-        notification.id === id
-          ? { ...notification, unread: true }
-          : notification
-      )
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications((current) =>
-      current.map((notification) => ({
-        ...notification,
-        unread: false,
-      }))
-    );
+  const markAllAsRead = async () => {
+    try {
+      await apiRequest("/api/notifications/read-all", { method: "PATCH" });
+      setNotifications((list) => list.map((n) => ({ ...n, unread: false })));
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const openNotification = (notification) => {
     markAsRead(notification.id);
-    setSelectedNotification({
-      ...notification,
-      unread: false,
-    });
-  };
-
-  const closeNotification = () => {
-    setSelectedNotification(null);
+    setSelectedNotification({ ...notification, unread: false });
   };
 
   return (
@@ -192,40 +135,35 @@ function Notifications() {
       {/* PAGE HEADER */}
       <div className="page-head">
         <div className="notifications-heading">
-          <button
-            className="icon-btn"
-            onClick={() => nav(-1)}
-            aria-label="Go back"
-          >
+          <button className="icon-btn" onClick={() => nav(-1)} aria-label="Go back">
             <ArrowLeft size={18} />
           </button>
 
           <div>
             <div className="eyebrow">LANBETHCARE</div>
-
             <h1>
               Notifications
-              {unreadCount > 0 && (
-                <span className="notification-count">
-                  {unreadCount}
-                </span>
-              )}
+              {unreadCount > 0 && <span className="notification-count">{unreadCount}</span>}
             </h1>
-
-            <p>
-              Stay up to date with your work, clients, documents and
-              company announcements.
-            </p>
+            <p>Notices from admin, document expiry alerts and birthday reminders.</p>
           </div>
         </div>
 
-        {unreadCount > 0 && (
-          <button className="outline" onClick={markAllAsRead}>
-            <CheckCheck size={15} />
-            Mark all as read
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="outline" onClick={loadNotifications} disabled={loading}>
+            <RefreshCw size={15} className={loading ? "spin" : ""} />
+            Refresh
           </button>
-        )}
+          {unreadCount > 0 && (
+            <button className="outline" onClick={markAllAsRead}>
+              <CheckCheck size={15} />
+              Mark all as read
+            </button>
+          )}
+        </div>
       </div>
+
+      {error && <div className="form-error" style={{ marginBottom: 16 }}>{error}</div>}
 
       {/* SUMMARY */}
       <div className="notification-summary">
@@ -233,10 +171,9 @@ function Notifications() {
           <span className="notification-summary-icon">
             <Bell size={18} />
           </span>
-
           <div>
             <small>Total Notifications</small>
-            <strong>{notifications.length}</strong>
+            <strong>{loading ? "—" : notifications.length}</strong>
           </div>
         </div>
 
@@ -244,10 +181,9 @@ function Notifications() {
           <span className="notification-summary-icon unread">
             <Info size={18} />
           </span>
-
           <div>
             <small>Unread</small>
-            <strong>{unreadCount}</strong>
+            <strong>{loading ? "—" : unreadCount}</strong>
           </div>
         </div>
 
@@ -255,18 +191,9 @@ function Notifications() {
           <span className="notification-summary-icon warning">
             <FileWarning size={18} />
           </span>
-
           <div>
             <small>Action Required</small>
-            <strong>
-              {
-                notifications.filter(
-                  (notification) =>
-                    notification.unread &&
-                    notification.priority === "high"
-                ).length
-              }
-            </strong>
+            <strong>{loading ? "—" : actionRequiredCount}</strong>
           </div>
         </div>
       </div>
@@ -274,35 +201,19 @@ function Notifications() {
       {/* FILTERS */}
       <div className="notifications-toolbar">
         <div className="notification-filters">
-          <button
-            className={filter === "all" ? "active" : ""}
-            onClick={() => setFilter("all")}
-          >
-            All
-            <span>{notifications.length}</span>
+          <button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>
+            All <span>{notifications.length}</span>
           </button>
-
-          <button
-            className={filter === "unread" ? "active" : ""}
-            onClick={() => setFilter("unread")}
-          >
-            Unread
-            <span>{unreadCount}</span>
+          <button className={filter === "unread" ? "active" : ""} onClick={() => setFilter("unread")}>
+            Unread <span>{unreadCount}</span>
           </button>
-
-          <button
-            className={filter === "read" ? "active" : ""}
-            onClick={() => setFilter("read")}
-          >
-            Read
-            <span>
-              {notifications.length - unreadCount}
-            </span>
+          <button className={filter === "read" ? "active" : ""} onClick={() => setFilter("read")}>
+            Read <span>{notifications.length - unreadCount}</span>
           </button>
         </div>
       </div>
 
-      {/* NOTIFICATION LIST */}
+      {/* LIST */}
       <section className="notifications-card">
         <div className="notifications-card-head">
           <div>
@@ -315,14 +226,16 @@ function Notifications() {
                 : "All Notifications"}
             </h2>
           </div>
-
           <span className="notification-total">
-            {filteredNotifications.length} notification
-            {filteredNotifications.length !== 1 ? "s" : ""}
+            {filteredNotifications.length} notification{filteredNotifications.length !== 1 ? "s" : ""}
           </span>
         </div>
 
-        {filteredNotifications.length > 0 ? (
+        {loading ? (
+          <div className="notifications-empty">
+            <p>Loading notifications...</p>
+          </div>
+        ) : filteredNotifications.length > 0 ? (
           <div className="notification-list">
             {filteredNotifications.map((notification) => (
               <NotificationRow
@@ -330,9 +243,6 @@ function Notifications() {
                 notification={notification}
                 onOpen={() => openNotification(notification)}
                 onMarkRead={() => markAsRead(notification.id)}
-                onMarkUnread={() =>
-                  markAsUnread(notification.id)
-                }
               />
             ))}
           </div>
@@ -341,19 +251,12 @@ function Notifications() {
         )}
       </section>
 
-      <div className="watermark">
-        LANBETH CARE
-      </div>
+      <div className="watermark">LANBETH CARE</div>
 
-      {/* DETAILS MODAL */}
       {selectedNotification && (
         <NotificationModal
           notification={selectedNotification}
-          onClose={closeNotification}
-          onMarkUnread={() => {
-            markAsUnread(selectedNotification.id);
-            setSelectedNotification(null);
-          }}
+          onClose={() => setSelectedNotification(null)}
         />
       )}
     </div>
@@ -364,39 +267,19 @@ function Notifications() {
    NOTIFICATION ROW
 ========================================================= */
 
-function NotificationRow({
-  notification,
-  onOpen,
-  onMarkRead,
-  onMarkUnread,
-}) {
+function NotificationRow({ notification, onOpen, onMarkRead }) {
   return (
-    <div
-      className={`notification-row ${
-        notification.unread ? "unread" : ""
-      }`}
-    >
-      <div
-        className={`notification-icon ${notification.type}`}
-      >
+    <div className={`notification-row ${notification.unread ? "unread" : ""}`}>
+      <div className={`notification-icon ${notification.type}`}>
         <NotificationIcon type={notification.type} />
       </div>
 
-      <div
-        className="notification-main"
-        onClick={onOpen}
-      >
+      <div className="notification-main" onClick={onOpen}>
         <div className="notification-title-row">
           <h3>{notification.title}</h3>
-
-          {notification.unread && (
-            <span className="unread-dot" />
-          )}
-
+          {notification.unread && <span className="unread-dot" />}
           {notification.priority === "high" && (
-            <span className="priority-badge">
-              Action Required
-            </span>
+            <span className="priority-badge">Action Required</span>
           )}
         </div>
 
@@ -404,6 +287,12 @@ function NotificationRow({
 
         <div className="notification-meta">
           <span>{notification.category}</span>
+          {notification.senderName && (
+            <>
+              <span>•</span>
+              <span>From {notification.senderName}</span>
+            </>
+          )}
           <span>•</span>
           <span>{notification.date}</span>
           <span>•</span>
@@ -412,29 +301,13 @@ function NotificationRow({
       </div>
 
       <div className="notification-actions">
-        <button
-          className="notification-action"
-          onClick={onOpen}
-          title="View notification"
-        >
+        <button className="notification-action" onClick={onOpen} title="View notification">
           <ChevronRight size={17} />
         </button>
 
-        {notification.unread ? (
-          <button
-            className="notification-action"
-            onClick={onMarkRead}
-            title="Mark as read"
-          >
+        {notification.unread && (
+          <button className="notification-action" onClick={onMarkRead} title="Mark as read">
             <Check size={15} />
-          </button>
-        ) : (
-          <button
-            className="notification-action"
-            onClick={onMarkUnread}
-            title="Mark as unread"
-          >
-            <Bell size={15} />
           </button>
         )}
       </div>
@@ -447,31 +320,10 @@ function NotificationRow({
 ========================================================= */
 
 function NotificationIcon({ type }) {
-  if (type === "expiry") {
-    return <FileWarning size={18} />;
-  }
-
-  if (type === "policy") {
-    return <ShieldCheck size={18} />;
-  }
-
-  if (type === "client") {
-    return <UserPlus size={18} />;
-  }
-
-  if (type === "report") {
-    return <ClipboardList size={18} />;
-  }
-
-  if (type === "document") {
-    return <FileText size={18} />;
-  }
-
-  if (type === "announcement") {
-    return <CalendarClock size={18} />;
-  }
-
-  return <Bell size={18} />;
+  if (type === "document_expired" || type === "document_expiring") return <FileWarning size={18} />;
+  if (type === "birthday") return <Cake size={18} />;
+  if (type === "notice") return <Megaphone size={18} />;
+  return <Clock size={18} />;
 }
 
 /* =========================================================
@@ -498,7 +350,6 @@ function EmptyNotifications({ filter }) {
       <div className="notifications-empty-icon">
         <Bell size={24} />
       </div>
-
       <h3>{title}</h3>
       <p>{description}</p>
     </div>
@@ -509,43 +360,27 @@ function EmptyNotifications({ filter }) {
    MODAL
 ========================================================= */
 
-function NotificationModal({
-  notification,
-  onClose,
-  onMarkUnread,
-}) {
+function NotificationModal({ notification, onClose }) {
   return (
     <div
       className="notification-modal-backdrop"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className="notification-modal">
         <div className="notification-modal-head">
           <div className="notification-modal-heading">
-            <span
-              className={`notification-modal-icon ${notification.type}`}
-            >
+            <span className={`notification-modal-icon ${notification.type}`}>
               <NotificationIcon type={notification.type} />
             </span>
-
             <div>
-              <span className="eyebrow">
-                {notification.category}
-              </span>
-
+              <span className="eyebrow">{notification.category}</span>
               <h2>{notification.title}</h2>
             </div>
           </div>
 
-          <button
-            className="icon-btn"
-            onClick={onClose}
-            aria-label="Close"
-          >
+          <button className="icon-btn" onClick={onClose} aria-label="Close">
             <X size={17} />
           </button>
         </div>
@@ -560,14 +395,9 @@ function NotificationModal({
           {notification.priority === "high" && (
             <div className="notification-alert">
               <FileWarning size={17} />
-
               <div>
                 <strong>Action required</strong>
-
-                <p>
-                  Please attend to this notification as soon
-                  as possible.
-                </p>
+                <p>Please attend to this notification as soon as possible.</p>
               </div>
             </div>
           )}
@@ -576,38 +406,23 @@ function NotificationModal({
             <p>{notification.message}</p>
           </div>
 
-          {notification.expiryDate && (
+          {notification.senderName && (
             <div className="notification-detail-box">
-              <small>Document Expiry Date</small>
-              <strong>
-                {notification.expiryDate}
-              </strong>
+              <small>From</small>
+              <strong>{notification.senderName}</strong>
             </div>
           )}
 
-          {notification.clientName && (
+          {notification.expiryDate && (
             <div className="notification-detail-box">
-              <small>Client</small>
-              <strong>
-                {notification.clientName}
-              </strong>
+              <small>Document Expiry Date</small>
+              <strong>{notification.expiryDate}</strong>
             </div>
           )}
         </div>
 
         <div className="notification-modal-footer">
-          <button
-            className="outline"
-            onClick={onMarkUnread}
-          >
-            <Bell size={14} />
-            Mark as unread
-          </button>
-
-          <button
-            className="primary"
-            onClick={onClose}
-          >
+          <button className="primary" onClick={onClose}>
             <Check size={14} />
             Done
           </button>
